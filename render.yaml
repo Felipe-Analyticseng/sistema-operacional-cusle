@@ -2,6 +2,7 @@ services:
   - type: web
     name: sistema-operacional-cusle
     runtime: python
+    plan: starter
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn wsgi:app
     envVars:
