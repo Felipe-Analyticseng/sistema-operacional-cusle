@@ -42,6 +42,30 @@ def _parse_admin_users():
     return users
 
 
+def _parse_admin_names():
+    """
+    Lê nomes de exibição dos admins.
+
+    Formato:
+       ADMIN_NAMES=admin@email.com:Cusle Admin,outro@email.com:Outro Nome
+    """
+    names = {}
+    raw_names = os.getenv("ADMIN_NAMES", "")
+    if raw_names:
+        for item in raw_names.split(","):
+            if ":" not in item:
+                continue
+
+            username, name = item.split(":", 1)
+            username = username.strip()
+            name = name.strip()
+
+            if username and name:
+                names[username] = name
+
+    return names
+
+
 def autenticar_admin(usuario: str, senha: str):
     """
     Autentica o admin sem depender de Werkzeug.
@@ -64,7 +88,7 @@ def autenticar_admin(usuario: str, senha: str):
     if not hmac.compare_digest(str(senha), str(senha_esperada)):
         return None
 
-    nome = usuario_limpo.split("@")[0]
+    nome = _parse_admin_names().get(usuario_limpo, usuario_limpo.split("@")[0])
 
     return {
         "nome": nome,
