@@ -102,6 +102,11 @@ def _calcular_total_mensalidade(form) -> tuple[str, str | None]:
 
 
 @bp.get("/")
+def landing():
+    return render_template("user/landing.html")
+
+
+@bp.get("/portal")
 def home():
     cards = [
         {"title": "Filho de Santo", "desc": "Mensalidade, limpeza e justificativas.", "url": url_for("user.filho_santo")},

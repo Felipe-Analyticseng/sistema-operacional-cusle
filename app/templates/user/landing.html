@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% set body_class = 'public-bg' %}
+{% block title %}CUSLE{% endblock %}
+{% block body %}
+<main class="public-container">
+  <header class="hero-card landing-hero">
+    <div class="brand-row">
+      <img src="{{ url_for('static', filename='img/logo_cusle.png') }}" alt="CUSLE" class="brand-logo">
+      <div>
+        <p class="eyebrow">Sistema Operacional CUSLE</p>
+        <h1>CUSLE</h1>
+        <p>Escolha o ambiente que deseja acessar.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="card-grid landing-grid">
+    <a class="choice-card" href="{{ url_for('user.home') }}">
+      <span>01</span>
+      <h2>Portal CUSLE</h2>
+      <p>Acesso para filho de santo, PAC, medicina, assistência e cursos.</p>
+    </a>
+    <a class="choice-card" href="{{ url_for('admin.login') }}">
+      <span>02</span>
+      <h2>CUSLE Admin</h2>
+      <p>Área administrativa para acompanhamento e gestão dos registros.</p>
+    </a>
+  </section>
+</main>
+{% endblock %}

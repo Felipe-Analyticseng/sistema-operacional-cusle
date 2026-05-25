@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: sistema-operacional-cusle
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: PIX_CUSLE_CHAVE
+        sync: false
+      - key: PIX_CUSLE_NOME
+        sync: false
+      - key: CESTA_BASICA_PAC_VALOR
+        sync: false
+      - key: FALTAS_URL
+        sync: false
