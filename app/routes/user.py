@@ -127,7 +127,7 @@ def portal_login():
             session["portal_logado"] = True
             session["portal_user"] = usuario
             flash("Login realizado com sucesso.", "success")
-            return redirect(url_for("user.filho_santo"))
+            return redirect(url_for("user.home"))
 
         status = buscar_status_portal(email=request.form.get("email"))
         flash(mensagem_status_portal(status), "warning")
