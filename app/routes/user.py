@@ -107,6 +107,7 @@ def landing():
 
 
 @bp.get("/portal")
+@portal_required
 def home():
     cards = [
         {"title": "Filho de Santo", "desc": "Mensalidade, limpeza e justificativas.", "url": url_for("user.filho_santo")},
