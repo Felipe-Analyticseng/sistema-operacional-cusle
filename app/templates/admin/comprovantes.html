@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% set body_class = 'admin-bg' %}
+{% block body %}
+{% include 'partials/admin_header.html' %}
+<main class="admin-main">
+  <div class="admin-title">
+    <p class="eyebrow">Administração financeira</p>
+    <h1>Financeiro</h1>
+    <span>Controle de comprovantes, valores pagos, valores pendentes e atualização de status.</span>
+  </div>
+
+  <section class="kpi-grid six">
+    <div class="kpi"><span>Total de Registros</span><strong>{{ resumo.total }}</strong><small>Comprovantes filtrados</small></div>
+    <div class="kpi"><span>Valor Total</span><strong>{{ valor_total_formatado }}</strong><small>Soma geral informada</small></div>
+    <div class="kpi"><span>Valor Pago</span><strong>{{ valor_pago_formatado }}</strong><small>Status pago/aprovado</small></div>
+    <div class="kpi"><span>Valor Pendente</span><strong>{{ valor_pendente_formatado }}</strong><small>Status diferente de pago</small></div>
+    <div class="kpi"><span>Pendentes</span><strong>{{ resumo.pendentes }}</strong><small>Qtd. status diferente de pago</small></div>
+    <div class="kpi"><span>Aprovados</span><strong>{{ resumo.aprovados }}</strong><small>Qtd. status pago/aprovado</small></div>
+  </section>
+
+  <section class="filter-panel">
+    <form method="get" class="filter-form">
+      <label>Tipo<select name="tipo">{% for item in tipos %}<option value="{{ item }}" {% if item == tipo %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+      <label>Status<select name="status">{% for item in status_options %}<option value="{{ item }}" {% if item == status %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+      <button class="btn small" type="submit">Filtrar</button>
+      <a class="btn secondary small" href="{{ url_for('admin.financeiro_export', tipo=tipo, status=status) }}">Baixar Excel</a>
+    </form>
+  </section>
+
+  <section class="table-panel">
+    <div class="table-head">
+      <div><h2>Lista financeira</h2><p>Baixe arquivos individualmente, atualize status e exporte a tabela filtrada.</p></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th>Nome</th><th>Tipo</th><th>Valor</th><th>Status</th><th>Data</th><th>Arquivo</th><th>Atualização</th></tr></thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.nome }}<small>{{ r.cpf }}</small></td>
+            <td>{{ r.tipo_comprovante }}</td>
+            <td>{{ r.valor_informado|brl }}</td>
+            <td><span class="badge">{{ r.status }}</span></td>
+            <td>{{ r.created_at|datetimebr }}</td>
+            <td><a class="link-btn" href="{{ url_for('admin.comprovante_download', comprovante_id=r.id) }}">Baixar</a></td>
+            <td>
+              <form class="inline-form" method="post">
+                <input type="hidden" name="comprovante_id" value="{{ r.id }}">
+                <select name="status">
+                  {% for opt in ['pendente','em_analise','pago','aprovado','reprovado'] %}<option value="{{ opt }}" {% if r.status == opt %}selected{% endif %}>{{ opt }}</option>{% endfor %}
+                </select>
+                <input name="observacao_admin" placeholder="Obs." value="{{ r.observacao_admin or '' }}">
+                <button>Salvar</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}<tr><td colspan="8">Nenhum registro financeiro encontrado.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% set body_class = 'public-bg' %}
+{% block body %}
+<main class="public-container wide-form">
+  {% set title = 'Cadastro Assistido PAC' %}{% set subtitle = 'Cadastro da pessoa responsável e filhos vinculados ao Programa Acolhe CUSLE.' %}
+  {% include 'partials/user_header.html' %}
+  <form class="form-card" method="post" id="pacForm">
+    <div class="section-heading"><span>01</span><div><h2>Dados da pessoa responsável</h2><p>Todos os campos marcados com * são obrigatórios.</p></div></div>
+    <div class="form-grid two">
+      <label>Nome completo *<input name="nome" required></label>
+      <label>CPF *<input name="cpf" required data-mask="cpf"></label>
+      <label>E-mail *<input name="email" type="email" required></label>
+      <label>Telefone / WhatsApp *<input name="telefone" required data-mask="phone"></label>
+      <label>Data de nascimento *<input name="data_nascimento" type="date" required></label>
+      <label>Sexo *<select name="sexo" required>{% for item in sexo %}<option value="{{ item }}">{{ item or 'Selecione' }}</option>{% endfor %}</select></label>
+      <label>Etnia *<select name="etnia" required>{% for item in etnias %}<option value="{{ item }}">{{ item or 'Selecione' }}</option>{% endfor %}</select></label>
+      <label>Tem alguma deficiência? *<select name="possui_deficiencia" data-toggle-target="respDef"><option>Não</option><option>Sim</option></select></label>
+    </div>
+    <label class="hidden" id="respDef">Descrição da deficiência<textarea name="descricao_deficiencia" rows="3"></textarea></label>
+    <div class="section-heading"><span>02</span><div><h2>Filhos</h2><p>Informe a quantidade para gerar os blocos de cadastro.</p></div></div>
+    <label class="small-input">Quantidade de filhos<input id="qtdFilhos" name="qtd_filhos" type="number" min="0" max="15" value="0"></label>
+    <div id="filhosContainer" data-sexo='{{ sexo|tojson }}' data-etnias='{{ etnias|tojson }}'></div>
+    <label class="check"><input type="checkbox" name="dados_compartilhamento" required> Concordo em compartilhar meus dados *</label>
+    <div class="actions"><a class="btn secondary" href="{{ url_for('user.pac_menu') }}">Voltar</a><button class="btn" type="submit">Registrar cadastro</button></div>
+  </form>
+</main>
+{% endblock %}

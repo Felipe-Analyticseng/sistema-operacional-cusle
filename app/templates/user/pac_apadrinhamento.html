@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% set body_class = 'public-bg' %}
+{% block body %}
+<main class="public-container narrow">
+  {% set title = 'Apadrinhamento PAC' %}{% set subtitle = 'Selecione um filho de santo e uma criança disponível para apadrinhamento.' %}
+  {% include 'partials/user_header.html' %}
+  <form class="form-card" method="post">
+    {% if erro_banco %}
+      <div class="empty"><b>Falha ao consultar o banco.</b><br>O formulário foi protegido para não exibir erro técnico ao usuário final. Detalhe técnico: {{ erro_banco }}</div>
+    {% endif %}
+    {% if not erro_banco and not padrinhos %}<div class="empty">Nenhum filho de santo encontrado com perfil <b>filhes</b>.</div>{% endif %}
+    {% if not erro_banco and not criancas %}<div class="empty">Nenhuma criança masculina disponível para apadrinhamento.</div>{% endif %}
+    <label>Quem está apadrinhando?
+      <select name="padrinho_id" required {% if erro_banco or not padrinhos %}disabled{% endif %}>
+        {% for p in padrinhos %}<option value="{{ p.id }}">{{ p.nome }} - CPF {{ p.cpf }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Criança
+      <select name="crianca_id" required {% if erro_banco or not criancas %}disabled{% endif %}>
+        {% for c in criancas %}<option value="{{ c.cadastro_id }}">{{ c.nome }} - {{ c.idade }} anos</option>{% endfor %}
+      </select>
+    </label>
+    <div class="actions"><a class="btn secondary" href="{{ url_for('user.pac_menu') }}">Voltar</a><button class="btn" type="submit" {% if erro_banco or not padrinhos or not criancas %}disabled{% endif %}>Registrar apadrinhamento</button></div>
+  </form>
+</main>
+{% endblock %}

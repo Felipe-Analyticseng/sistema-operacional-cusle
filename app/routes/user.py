@@ -1,0 +1,313 @@
+from __future__ import annotations
+
+from datetime import date
+
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+
+from config.settings import CESTA_BASICA_PAC_VALOR, PIX_CUSLE_CHAVE, PIX_CUSLE_NOME
+from services.financeiro_service import (
+    parse_brl_value,
+    registrar_comprovante_mensalidade,
+    registrar_comprovante_pac_contribuicao,
+)
+from services.conteudo_service import obter_conteudo
+from services.pac_service import (
+    cadastrar_familia_pac,
+    listar_criancas_disponiveis_apadrinhamento,
+    listar_filhes_santo_apadrinhamento,
+    registrar_apadrinhamento_pac,
+)
+from services.portal_auth_service import (
+    autenticar_usuario_portal,
+    buscar_status_portal,
+    mensagem_status_portal,
+    registrar_usuario_portal,
+)
+from app.routes.helpers import df_records, portal_required
+
+bp = Blueprint("user", __name__)
+
+SEXO = ["", "Feminino", "Masculino", "Outro", "Prefiro não informar"]
+ETNIAS = ["", "Preto", "Branco", "Pardo", "Amarelo"]
+
+FINANCEIRO = {
+    "mensalidade": {
+        "title": "Mensalidade / Contribuição",
+        "subtitle": "Envie o comprovante da mensalidade e, se desejar, informe contribuição voluntária e cesta básica PAC.",
+        "service": registrar_comprovante_mensalidade,
+        "show_month": True,
+        "show_extra_options": True,
+    },
+    "pac-contribuicao": {
+        "title": "Contribuição PAC",
+        "subtitle": "Envie uma contribuição vinculada ao Programa Acolhe CUSLE.",
+        "service": registrar_comprovante_pac_contribuicao,
+        "show_month": False,
+        "show_extra_options": False,
+    },
+}
+
+
+def _format_decimal_br(value: float) -> str:
+    return f"{float(value):.2f}".replace(".", ",")
+
+
+def _opcoes_mes_referencia() -> list[dict[str, str]]:
+    meses = [
+        "Janeiro",
+        "Fevereiro",
+        "Março",
+        "Abril",
+        "Maio",
+        "Junho",
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro",
+    ]
+    ano_atual = date.today().year
+    anos = range(ano_atual - 1, ano_atual + 2)
+
+    return [
+        {"value": f"{mes:02d}/{ano}", "label": f"{meses[mes - 1]}/{ano}"}
+        for ano in anos
+        for mes in range(1, 13)
+    ]
+
+
+def _calcular_total_mensalidade(form) -> tuple[str, str | None]:
+    valor_base = parse_brl_value(form.get("valor"))
+    detalhes = [f"Mensalidade base: R$ {_format_decimal_br(valor_base)}"]
+
+    total = valor_base
+
+    if form.get("tem_contribuicao_voluntaria") == "on":
+        valor_voluntario = parse_brl_value(form.get("valor_contribuicao_voluntaria"))
+        total += valor_voluntario
+        detalhes.append(f"Contribuição voluntária: R$ {_format_decimal_br(valor_voluntario)}")
+
+    if form.get("tem_cesta_basica") == "on":
+        qtd_cestas = int(form.get("qtd_cestas") or 0)
+        if qtd_cestas <= 0:
+            raise ValueError("Informe a quantidade de cestas básicas PAC.")
+        valor_cesta = float(CESTA_BASICA_PAC_VALOR or 0)
+        total_cestas = qtd_cestas * valor_cesta
+        total += total_cestas
+        detalhes.append(f"Cesta básica PAC: {qtd_cestas} unidade(s) x R$ {_format_decimal_br(valor_cesta)} = R$ {_format_decimal_br(total_cestas)}")
+
+    detalhes.append(f"Total informado: R$ {_format_decimal_br(total)}")
+    return _format_decimal_br(total), " | ".join(detalhes)
+
+
+@bp.get("/")
+def home():
+    cards = [
+        {"title": "Filho de Santo", "desc": "Mensalidade, limpeza e justificativas.", "url": url_for("user.filho_santo")},
+        {"title": "PAC - Programa Acolhe CUSLE", "desc": "Cadastro assistido, apadrinhamento e contribuição.", "url": url_for("user.pac_menu")},
+        {"title": "Medicina", "desc": "Conteúdo reservado para orientações.", "url": url_for("user.placeholder", area="medicina")},
+        {"title": "Assistência", "desc": "Frentes assistenciais e apoio.", "url": url_for("user.placeholder", area="assistencia")},
+        {"title": "Cursos e Capacitações", "desc": "Acesse a ficha oficial de cadastro para cursos.", "url": "https://ficha-cadastro.onrender.com/", "external": True},
+    ]
+    return render_template("user/home.html", title="Portal CUSLE", subtitle=None, cards=cards, is_home=True)
+
+
+@bp.route("/portal/login", methods=["GET", "POST"])
+def portal_login():
+    if request.method == "POST":
+        usuario = autenticar_usuario_portal(request.form.get("email"), request.form.get("senha"))
+        if usuario:
+            session["portal_logado"] = True
+            session["portal_user"] = usuario
+            flash("Login realizado com sucesso.", "success")
+            return redirect(url_for("user.filho_santo"))
+
+        status = buscar_status_portal(email=request.form.get("email"))
+        flash(mensagem_status_portal(status), "warning")
+    return render_template("user/portal_login.html")
+
+
+@bp.route("/portal/registrar", methods=["GET", "POST"])
+def portal_register():
+    status_info = None
+    status_message = None
+    if request.method == "POST":
+        try:
+            registrar_usuario_portal(
+                email=request.form.get("email"),
+                cpf=request.form.get("cpf"),
+                senha=request.form.get("senha"),
+                confirmar_senha=request.form.get("confirmar_senha"),
+            )
+            status_info = buscar_status_portal(email=request.form.get("email"), cpf=request.form.get("cpf"))
+            status_message = mensagem_status_portal(status_info)
+            flash("Solicitação enviada para aprovação administrativa.", "success")
+        except Exception as exc:
+            flash(str(exc), "danger")
+    return render_template("user/portal_register.html", status_info=status_info, status_message=status_message)
+
+
+@bp.route("/portal/status", methods=["GET", "POST"])
+def portal_status():
+    status_info = None
+    status_message = None
+    if request.method == "POST":
+        status_info = buscar_status_portal(email=request.form.get("email"), cpf=request.form.get("cpf"))
+        status_message = mensagem_status_portal(status_info)
+    return render_template("user/portal_status.html", status_info=status_info, status_message=status_message)
+
+
+@bp.get("/portal/logout")
+def portal_logout():
+    session.pop("portal_logado", None)
+    session.pop("portal_user", None)
+    flash("Acesso do portal encerrado.", "success")
+    return redirect(url_for("user.portal_login"))
+
+
+@bp.get("/filho-santo")
+@portal_required
+def filho_santo():
+    cards = [
+        {"title": "Mensalidade / Contribuição", "desc": "Enviar comprovante mensal, contribuição voluntária e cesta básica PAC.", "url": url_for("user.financeiro", tipo="mensalidade")},
+        {"title": "Limpeza", "desc": "Registrar participação na limpeza.", "url": url_for("user.limpeza")},
+        {"title": "Faltas", "desc": "Acesso ao sistema externo de justificativa.", "url": "https://lista-cambones.onrender.com/faltas", "external": True},
+    ]
+    return render_template("user/home.html", title="Filho de Santo", subtitle="Escolha uma opção", cards=cards)
+
+
+@bp.route("/financeiro/<tipo>", methods=["GET", "POST"])
+@portal_required
+def financeiro(tipo: str):
+    cfg = FINANCEIRO.get(tipo)
+    if not cfg:
+        flash("Tipo de comprovante inválido.", "danger")
+        return redirect(url_for("user.home"))
+    if request.method == "POST":
+        try:
+            nome = request.form.get("nome")
+            cpf = request.form.get("cpf")
+            telefone = request.form.get("telefone")
+            valor = request.form.get("valor")
+            justificativa = request.form.get("justificativa")
+            arquivo = request.files.get("comprovante")
+
+            if cfg["show_month"]:
+                valor_total, detalhes = _calcular_total_mensalidade(request.form)
+                observacoes = "\n".join([x for x in [justificativa, detalhes] if x])
+                cfg["service"](nome, cpf, telefone, request.form.get("mes_referencia"), valor_total, observacoes, arquivo)
+            else:
+                cfg["service"](nome, cpf, telefone, valor, justificativa, arquivo)
+            flash("Comprovante enviado com sucesso.", "success")
+            return redirect(url_for("user.financeiro", tipo=tipo))
+        except Exception as exc:
+            flash(str(exc), "danger")
+    return render_template(
+        "user/financeiro_form.html",
+        cfg=cfg,
+        pix_chave=PIX_CUSLE_CHAVE,
+        pix_nome=PIX_CUSLE_NOME,
+        cesta_basica_valor=float(CESTA_BASICA_PAC_VALOR or 0),
+        meses_referencia=_opcoes_mes_referencia(),
+    )
+
+
+@bp.route("/limpeza", methods=["GET", "POST"])
+@portal_required
+def limpeza():
+    return render_template("user/placeholder.html", title="Limpeza")
+
+
+@bp.get("/pac")
+def pac_menu():
+    cards = [
+        {"title": "Cadastro Assistido", "desc": "Cadastro de pessoa assistida e filhos.", "url": url_for("user.pac_cadastro")},
+        {"title": "Apadrinhamento", "desc": "Escolher criança disponível para apadrinhar.", "url": url_for("user.pac_apadrinhamento")},
+        {"title": "Contribuição PAC", "desc": "Enviar comprovante de contribuição.", "url": url_for("user.financeiro", tipo="pac-contribuicao")},
+    ]
+    return render_template("user/home.html", title="PAC - Programa Acolhe CUSLE", subtitle="Escolha uma frente de atendimento", cards=cards)
+
+
+@bp.route("/pac/cadastro", methods=["GET", "POST"])
+def pac_cadastro():
+    if request.method == "POST":
+        try:
+            qtd_filhos = int(request.form.get("qtd_filhos") or 0)
+            responsavel = {
+                "nome": request.form.get("nome"),
+                "cpf": request.form.get("cpf"),
+                "email": request.form.get("email"),
+                "telefone": request.form.get("telefone"),
+                "data_nascimento": request.form.get("data_nascimento"),
+                "sexo": request.form.get("sexo"),
+                "etnia": request.form.get("etnia"),
+                "possui_deficiencia": request.form.get("possui_deficiencia") == "Sim",
+                "descricao_deficiencia": request.form.get("descricao_deficiencia"),
+                "dados_compartilhamento": request.form.get("dados_compartilhamento") == "on",
+            }
+            filhos = []
+            for i in range(qtd_filhos):
+                filhos.append({
+                    "nome": request.form.get(f"filho_nome_{i}"),
+                    "documento": request.form.get(f"filho_documento_{i}"),
+                    "data_nascimento": request.form.get(f"filho_data_nascimento_{i}"),
+                    "sexo": request.form.get(f"filho_sexo_{i}"),
+                    "etnia": request.form.get(f"filho_etnia_{i}"),
+                    "possui_deficiencia": request.form.get(f"filho_possui_deficiencia_{i}") == "Sim",
+                    "descricao_deficiencia": request.form.get(f"filho_descricao_deficiencia_{i}"),
+                })
+            cadastrar_familia_pac(responsavel=responsavel, filhos=filhos)
+            flash("Cadastro PAC realizado com sucesso.", "success")
+            return redirect(url_for("user.pac_cadastro"))
+        except Exception as exc:
+            flash(str(exc), "danger")
+    return render_template("user/pac_cadastro.html", sexo=SEXO, etnias=ETNIAS)
+
+
+@bp.route("/pac/apadrinhamento", methods=["GET", "POST"])
+def pac_apadrinhamento():
+    erro_banco = None
+    padrinhos = []
+    criancas = []
+
+    try:
+        padrinhos_df = listar_filhes_santo_apadrinhamento()
+        criancas_df = listar_criancas_disponiveis_apadrinhamento()
+        padrinhos = df_records(padrinhos_df)
+        criancas = df_records(criancas_df)
+    except Exception as exc:
+        erro_banco = str(exc)
+        flash("Não foi possível carregar os dados de apadrinhamento. Verifique a conexão com o banco e a estrutura PAC.", "danger")
+
+    if request.method == "POST" and not erro_banco:
+        try:
+            registrar_apadrinhamento_pac(
+                int(request.form.get("padrinho_id")),
+                int(request.form.get("crianca_id")),
+            )
+            flash("Apadrinhamento registrado com sucesso.", "success")
+            return redirect(url_for("user.pac_apadrinhamento"))
+        except Exception as exc:
+            flash(str(exc), "danger")
+
+    return render_template(
+        "user/pac_apadrinhamento.html",
+        padrinhos=padrinhos,
+        criancas=criancas,
+        erro_banco=erro_banco,
+    )
+
+
+@bp.get("/area/<area>")
+def placeholder(area: str):
+    titles = {"medicina": "Medicina", "assistencia": "Assistência", "cursos": "Cursos"}
+    if area in {"medicina", "assistencia"}:
+        conteudo = obter_conteudo(f"{area}_menu")
+        return render_template(
+            "user/conteudo.html",
+            title=conteudo["titulo"],
+            conteudo=conteudo["conteudo"],
+            destaque=conteudo.get("destaque"),
+        )
+    return render_template("user/placeholder.html", title=titles.get(area, area.title()))

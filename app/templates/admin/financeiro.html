@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% set body_class = 'admin-bg' %}
+{% block body %}
+{% include 'partials/admin_header.html' %}
+<main class="admin-main">
+  <div class="admin-title">
+    <p class="eyebrow">Administração financeira</p>
+    <h1>Financeiro - Conciliação</h1>
+    <span>Concilie a tabela de cadastro com as movimentações enviadas no portal.</span>
+  </div>
+
+  <section class="kpi-grid six">
+    <div class="kpi"><span>Total de Registros</span><strong>{{ resumo.total }}</strong><small>Pessoas filtradas</small></div>
+    <div class="kpi"><span>Valor Total</span><strong>{{ valor_total_formatado }}</strong><small>Soma geral informada</small></div>
+    <div class="kpi"><span>Valor Pago</span><strong>{{ valor_pago_formatado }}</strong><small>Status aprovado</small></div>
+    <div class="kpi"><span>Valor Pendente</span><strong>{{ valor_pendente_formatado }}</strong><small>Status diferente de aprovado</small></div>
+    <div class="kpi"><span>Pendentes</span><strong>{{ resumo.pendentes }}</strong><small>Sem movimentação no portal</small></div>
+    <div class="kpi"><span>Aprovados</span><strong>{{ resumo.aprovados }}</strong><small>Conciliações aprovadas</small></div>
+  </section>
+
+  <section class="filter-panel">
+    <form method="get" class="filter-form">
+      <label>Mês<select name="mes">{% for item in meses %}<option value="{{ item }}" {% if item == mes %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+      <label>Tipo<select name="tipo">{% for item in tipos %}<option value="{{ item }}" {% if item == tipo %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+      <label>Status<select name="status">{% for item in status_options %}<option value="{{ item }}" {% if item == status %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+      <button class="btn small" type="submit">Filtrar</button>
+      <a class="btn secondary small" href="{{ url_for('admin.financeiro_export', mes=mes, tipo=tipo, status=status) }}">Baixar Excel</a>
+    </form>
+  </section>
+
+  <section class="filter-panel">
+    <details class="approval-details add-person">
+      <summary>Adicionar Pessoa</summary>
+      <form method="post" class="filter-form approval-form">
+        <input type="hidden" name="action" value="adicionar_pessoa">
+        <label>Nome<input name="nome" required></label>
+        <label>CPF<input name="cpf" data-mask="cpf"></label>
+        <label>Telefone<input name="telefone" data-mask="phone"></label>
+        <label>Email<input name="email" type="email"></label>
+        <label>Data de nascimento<input name="data_nascimento" type="date"></label>
+        <button class="btn small" type="submit">Adicionar</button>
+      </form>
+    </details>
+  </section>
+
+  <section class="table-panel">
+    <div class="table-head">
+      <div><h2>Conciliação mensal</h2><p>Clique em Editar para complementar cadastro e status em uma única ação.</p></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          {% macro sort_head(key, label) -%}
+            {% set next_direction = 'desc' if sort == key and direction == 'asc' else 'asc' %}
+            <a class="sort-link" href="{{ url_for('admin.financeiro', mes=mes, tipo=tipo, status=status, sort=key, direction=next_direction) }}">{{ label }}{% if sort == key %}<span>{{ '↓' if direction == 'desc' else '↑' }}</span>{% else %}<span>↕</span>{% endif %}</a>
+          {%- endmacro %}
+          <tr>
+            <th>{{ sort_head('nome', 'Nome') }}</th>
+            <th>{{ sort_head('cpf', 'CPF') }}</th>
+            <th>{{ sort_head('telefone', 'Telefone') }}</th>
+            <th>{{ sort_head('email', 'Email') }}</th>
+            <th>{{ sort_head('nascimento', 'Nascimento') }}</th>
+            <th>{{ sort_head('mes', 'Mês') }}</th>
+            <th>{{ sort_head('tipo', 'Tipo') }}</th>
+            <th>{{ sort_head('valor', 'Valor') }}</th>
+            <th>{{ sort_head('status', 'Status') }}</th>
+            <th>Arquivo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          {% set linha_form = 'linha-' ~ loop.index %}
+          <tr class="editable-row">
+            <td>
+              <span class="view-cell">{{ r.nome or '-' }}</span>
+              <input class="edit-cell" form="{{ linha_form }}" name="nome" value="{{ r.nome or '' }}" required>
+              <input form="{{ linha_form }}" type="hidden" name="action" value="salvar_linha">
+              <input form="{{ linha_form }}" type="hidden" name="cadastro_id" value="{{ r.cadastro_id or '' }}">
+              <input form="{{ linha_form }}" type="hidden" name="comprovante_id" value="{{ r.comprovante_id or '' }}">
+            </td>
+            <td><span class="view-cell">{{ r.cpf or '-' }}</span><input class="edit-cell" form="{{ linha_form }}" name="cpf" value="{{ r.cpf or '' }}" data-mask="cpf"></td>
+            <td><span class="view-cell">{{ r.telefone or '-' }}</span><input class="edit-cell" form="{{ linha_form }}" name="telefone" value="{{ r.telefone or '' }}" data-mask="phone"></td>
+            <td><span class="view-cell">{{ r.email or '-' }}</span><input class="edit-cell" form="{{ linha_form }}" name="email" type="email" value="{{ r.email or '' }}"></td>
+            <td><span class="view-cell">{{ r.data_nascimento or '-' }}</span><input class="edit-cell" form="{{ linha_form }}" name="data_nascimento" type="date" value="{{ r.data_nascimento or '' }}"></td>
+            <td>{{ r.mes_referencia }}</td>
+            <td>{{ r.tipo_label }}</td>
+            <td>{{ r.valor_informado|brl }}</td>
+            <td>
+              <span class="view-cell badge">{{ r.status_label }}</span>
+              <select class="edit-cell" form="{{ linha_form }}" name="status" {% if not r.tem_comprovante %}disabled{% endif %}>
+                {% for opt,label in [('em_analise','Em Análise'),('aprovado','Aprovado'),('reprovado','Reprovado')] %}
+                  <option value="{{ opt }}" {% if r.status_label == label %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <input class="edit-cell" form="{{ linha_form }}" name="observacao_admin" placeholder="Obs." value="{{ r.observacao_admin or '' }}" {% if not r.tem_comprovante %}disabled{% endif %}>
+            </td>
+            <td>{% if r.tem_comprovante %}<a class="link-btn" href="{{ url_for('admin.comprovante_download', comprovante_id=r.comprovante_id) }}">Baixar</a>{% else %}-{% endif %}</td>
+            <td>
+              <form id="{{ linha_form }}" method="post"></form>
+              <button class="btn secondary small js-edit-row" type="button">Editar</button>
+              <button class="btn small edit-cell" form="{{ linha_form }}" type="submit">Salvar</button>
+              <button class="btn secondary small edit-cell js-cancel-edit" type="button">Cancelar</button>
+            </td>
+          </tr>
+          {% else %}<tr><td colspan="11">Nenhum registro financeiro encontrado.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% set body_class = 'public-bg' %}
+{% block title %}{{ title|default('Portal CUSLE') }}{% endblock %}
+{% block body %}
+<main class="public-container">
+  {% include 'partials/user_header.html' %}
+  <section class="card-grid">
+    {% for card in cards %}
+      <a class="choice-card" href="{{ card.url }}" {% if card.external %}target="_blank" rel="noopener noreferrer"{% endif %}>
+        <span>{{ '%02d'|format(loop.index) }}</span>
+        <h2>{{ card.title }}</h2>
+        <p>{{ card.desc }}</p>
+      </a>
+    {% endfor %}
+  </section>
+</main>
+{% endblock %}

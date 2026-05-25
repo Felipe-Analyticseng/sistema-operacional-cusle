@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% set body_class = 'admin-bg' %}
+{% block body %}
+{% include 'partials/admin_header.html' %}
+<main class="admin-main">
+  <div class="admin-title">
+    <p class="eyebrow">Autorização de acesso</p>
+    <h1>Usuários do Portal</h1>
+    <span>Aprove ou reprove solicitações de acesso dos filhos ao portal, cruzando CPF com a tabela cadastro.cadastro.</span>
+  </div>
+
+  <section class="kpi-grid one">
+    <div class="kpi"><span>Total de solicitações</span><strong>{{ total }}</strong><small>Usuários registrados no portal</small></div>
+  </section>
+
+  <section class="table-panel">
+    <div class="table-head">
+      <div><h2>Solicitações de acesso</h2><p>O campo perfil vem do cruzamento com cadastro.cadastro. Se não houver cadastro, o perfil ficará nulo.</p></div>
+      <a class="btn small" href="{{ url_for('admin.portal_usuarios_export') }}">Baixar Excel</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nome</th><th>Perfil</th><th>CPF</th><th>E-mail</th><th>Status atual</th><th>Data</th><th>Aprovação</th></tr></thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ r.nome or '-' }}</td>
+            <td><span class="badge">{{ r.perfil or 'nulo' }}</span></td>
+            <td>{{ r.cpf }}</td>
+            <td>{{ r.email }}</td>
+            <td><span class="badge">{{ r.status }}</span>{% if r.observacao_admin %}<small>{{ r.observacao_admin }}</small>{% endif %}</td>
+            <td>{{ r.created_at|datetimebr }}</td>
+            <td>
+              <details class="approval-details">
+                <summary>Decidir</summary>
+                <form class="inline-form approval-form" method="post">
+                  <input type="hidden" name="user_id" value="{{ r.id }}">
+                  <select name="status">
+                    {% for opt in ['pendente','aprovado','reprovado'] %}<option value="{{ opt }}" {% if r.status == opt %}selected{% endif %}>{{ opt }}</option>{% endfor %}
+                  </select>
+                  <input name="observacao_admin" placeholder="Obs. admin" value="{{ r.observacao_admin or '' }}">
+                  <button>Salvar</button>
+                </form>
+              </details>
+            </td>
+          </tr>
+          {% else %}<tr><td colspan="7">Nenhuma solicitação de acesso encontrada.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+{% endblock %}

@@ -1,0 +1,19 @@
+<header class="hero-card compact">
+  <div class="brand-row">
+    <img src="{{ url_for('static', filename='img/logo_cusle.png') }}" alt="CUSLE" class="brand-logo">
+    <div>
+      {% if not is_home %}<p class="eyebrow">Portal CUSLE</p>{% endif %}
+      <h1>{{ title|default('Portal CUSLE') }}</h1>
+      {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+    </div>
+  </div>
+  <div class="quick-nav">
+    {% if is_home %}
+      <a class="btn secondary small" href="{{ url_for('user.portal_logout') }}">Sair</a>
+    {% else %}
+      <button class="btn secondary small js-back" type="button">← Voltar</button>
+      <a class="btn secondary small" href="{{ url_for('user.home') }}">Início</a>
+      <a class="btn secondary small" href="{{ url_for('user.portal_logout') }}">Sair</a>
+    {% endif %}
+  </div>
+</header>

@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% set body_class = 'admin-bg' %}
+{% block body %}
+{% include 'partials/admin_header.html' %}
+<main class="admin-main">
+  <div class="admin-title"><p class="eyebrow">Operacional</p><h1>{{ title }}</h1><span>{{ subtitle }}</span></div>
+  <section class="kpi-grid one"><div class="kpi"><span>Total</span><strong>{{ total }}</strong><small>Registros encontrados</small></div></section>
+  <section class="table-panel"><div class="table-head"><div><h2>{{ title }}</h2><p>Base operacional para acompanhamento administrativo.</p></div><a class="btn small" href="{{ export_url }}">Baixar Excel</a></div><div class="table-wrap"><table>
+    {% if rows %}<thead><tr>{% for key in rows[0].keys() %}<th>{{ key }}</th>{% endfor %}</tr></thead><tbody>{% for row in rows %}<tr>{% for value in row.values() %}<td>{{ value }}</td>{% endfor %}</tr>{% endfor %}</tbody>{% else %}<tbody><tr><td>Nenhum registro encontrado.</td></tr></tbody>{% endif %}
+  </table></div></section>
+</main>
+{% endblock %}

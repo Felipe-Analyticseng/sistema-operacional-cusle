@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% set body_class = 'login-bg' %}
+{% block body %}
+<main class="login-wrap">
+  <section class="login-card">
+    <img src="{{ url_for('static', filename='img/logo_cusle.png') }}" alt="CUSLE">
+    <p class="eyebrow">Portal CUSLE</p>
+    <h1>Status do acesso</h1>
+    <p>Consulte se seu acesso já foi aprovado pelo administrador.</p>
+    <form method="post">
+      <label>E-mail<input name="email" type="email"></label>
+      <label>CPF<input name="cpf" data-mask="cpf"></label>
+      <button class="btn" type="submit">Consultar status</button>
+    </form>
+    {% if status_message %}
+      <div class="status-box">
+        <strong>{{ status_message }}</strong>
+        {% if status_info %}
+          <small>Nome: {{ status_info.nome or '-' }}</small>
+          <small>Perfil: {{ status_info.perfil or 'nulo' }}</small>
+          <small>E-mail: {{ status_info.email or '-' }}</small>
+        {% endif %}
+      </div>
+    {% endif %}
+    <div class="login-links">
+      <a href="{{ url_for('user.portal_login') }}">Entrar</a>
+      <a href="{{ url_for('user.portal_register') }}">Registrar acesso</a>
+    </div>
+  </section>
+</main>
+{% endblock %}

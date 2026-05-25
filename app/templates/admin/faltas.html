@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% set body_class = 'admin-bg' %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>{% endblock %}
+{% block body %}
+{% include 'partials/admin_header.html' %}
+<main class="admin-main">
+  <div class="admin-title">
+    <p class="eyebrow">Operacional</p>
+    <h1>Faltas</h1>
+    <span>Quantidade de faltas por data e por pessoa.</span>
+  </div>
+
+  <section class="kpi-grid one">
+    <div class="kpi"><span>Total de Faltas</span><strong>{{ total }}</strong><small>Registros encontrados</small></div>
+  </section>
+
+  <section class="filter-panel">
+    <form method="get" class="filter-form">
+      <label>Sazonalidade
+        <select name="sazonalidade">
+          {% for item in ['Dia','Mês','Ano'] %}
+            <option value="{{ item }}" {% if item == sazonalidade %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="btn small" type="submit">Filtrar</button>
+    </form>
+  </section>
+
+  <section class="dashboard-grid one-col">
+    <article class="panel panel-tall">
+      <div><h2>Faltas por {{ sazonalidade|lower }}</h2><p>Quantidade registrada conforme a sazonalidade selecionada.</p></div>
+      <canvas id="chartFaltasData"></canvas>
+    </article>
+  </section>
+
+  <section class="table-panel">
+    <div class="table-head">
+      <div><h2>Faltas por pessoa</h2><p>Ordenado da maior para a menor quantidade.</p></div>
+      <div class="actions">
+        <span class="badge">Página {{ pagina }} de {{ total_paginas }}</span>
+        <a class="btn small" href="{{ export_url }}">Baixar Excel</a>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Pessoa</th><th>Quantidade de faltas</th></tr></thead>
+        <tbody>
+          {% for row in por_pessoa %}
+            <tr><td>{{ row.pessoa }}</td><td><span class="badge">{{ row.quantidade }}</span></td></tr>
+          {% else %}<tr><td colspan="2">Nenhuma falta encontrada.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="actions">
+      {% if pagina > 1 %}<a class="btn secondary small" href="{{ url_for('admin.faltas', sazonalidade=sazonalidade, pagina=pagina-1) }}">Anterior</a>{% endif %}
+      {% if pagina < total_paginas %}<a class="btn secondary small" href="{{ url_for('admin.faltas', sazonalidade=sazonalidade, pagina=pagina+1) }}">Próxima</a>{% endif %}
+    </div>
+  </section>
+</main>
+<script>
+const faltasPorData = {{ por_data|tojson }};
+const ctx = document.getElementById('chartFaltasData');
+if (ctx) {
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: faltasPorData.map((item) => item.data),
+      datasets: [{label: 'Faltas', data: faltasPorData.map((item) => item.quantidade), backgroundColor: '#486FA7', borderRadius: 8}]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {legend: {display: false}},
+      scales: {x: {grid: {display: false}}, y: {beginAtZero: true, ticks: {precision: 0}}}
+    }
+  });
+}
+</script>
+{% endblock %}

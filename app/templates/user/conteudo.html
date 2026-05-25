@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% set body_class = 'public-bg' %}
+{% block body %}
+<main class="public-container">
+  {% include 'partials/user_header.html' %}
+  <section class="form-card content-page">
+    <h2>{{ title }}</h2>
+    {% if destaque %}
+      <div class="content-highlight">{{ destaque }}</div>
+    {% endif %}
+    <div class="content-text">{{ conteudo }}</div>
+    <div class="actions"><a class="btn secondary" href="{{ url_for('user.home') }}">Voltar</a></div>
+  </section>
+</main>
+{% endblock %}

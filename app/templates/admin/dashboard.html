@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% set body_class = 'admin-bg' %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>{% endblock %}
+{% block body %}
+{% include 'partials/admin_header.html' %}
+<main class="admin-main">
+  <div class="admin-title"><p class="eyebrow">Visão executiva</p><h1>Dashboard CUSLE</h1><span>Indicadores essenciais do atendimento, PAC e financeiro.</span></div>
+  <section class="kpi-grid five">
+    <div class="kpi"><span>Pessoas PAC</span><strong>{{ pac_total }}</strong><small>perfil = pac</small></div>
+    <div class="kpi"><span>Crianças PAC</span><strong>{{ criancas_total }}</strong><small>menores de 18 anos</small></div>
+    <div class="kpi"><span>Mães responsáveis</span><strong>{{ responsaveis_total }}</strong><small>com filhos vinculados</small></div>
+    <div class="kpi"><span>Comprovantes</span><strong>{{ resumo_fin.total }}</strong><small>{{ valor_formatado }}</small></div>
+    <div class="kpi"><span>Faltas</span><strong>{{ faltas_total }}</strong><small>justificativas</small></div>
+  </section>
+  <section class="dashboard-grid">
+    <article class="panel"><div><h2>Responsáveis por quantidade de filhos</h2><p>Distribuição familiar PAC.</p></div><canvas id="chartFilhos"></canvas></article>
+    <article class="panel"><div><h2>Faixa etária PAC</h2><p>Distribuição por idade calculada.</p></div><canvas id="chartFaixas"></canvas></article>
+    <article class="panel"><div><h2>Status de apadrinhamento</h2><p>Crianças apadrinhadas vs. disponíveis.</p></div><canvas id="chartApadrinhamento"></canvas></article>
+    <article class="panel"><div><h2>Financeiro por tipo</h2><p>Valores informados em comprovantes.</p></div><canvas id="chartFinanceiro"></canvas></article>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>{% endblock %}

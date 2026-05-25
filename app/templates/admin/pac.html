@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% set body_class = 'admin-bg' %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>{% endblock %}
+{% block body %}
+{% include 'partials/admin_header.html' %}
+<main class="admin-main">
+  <div class="admin-title">
+    <p class="eyebrow">Programa Acolhe CUSLE</p>
+    <h1>Dashboard PAC</h1>
+    <span>Painel conciso de pessoas PAC, menores, apadrinhamento e responsáveis.</span>
+  </div>
+
+  <section class="kpi-grid four">
+    <div class="kpi"><span>QTD Pessoas PAC</span><strong>{{ resumo.pessoas }}</strong><small>Distinct de pessoas com perfil PAC</small></div>
+    <div class="kpi"><span>QTD Menores PAC</span><strong>{{ resumo.menores }}</strong><small>menor_idade = true</small></div>
+    <div class="kpi"><span>QTD Apadrinhados PAC</span><strong>{{ resumo.apadrinhados }}</strong><small>Crianças com padrinho vinculado</small></div>
+    <div class="kpi"><span>QTD Não Apadrinhados PAC</span><strong>{{ resumo.nao_apadrinhados }}</strong><small>Crianças ainda sem padrinho</small></div>
+  </section>
+
+  <section class="dashboard-grid one-col">
+    <article class="panel panel-tall">
+      <div>
+        <h2>Faixa etária PAC</h2>
+        <p>Distribuição de idade das pessoas cadastradas no PAC.</p>
+      </div>
+      <canvas id="chartFaixas"></canvas>
+    </article>
+  </section>
+
+  <section class="table-panel">
+    <div class="table-head">
+      <div>
+        <h2>Mães responsáveis</h2>
+        <p>Regra aplicada: perfil = PAC e menor_idade = false. Clique em árvore para visualizar filhos vinculados.</p>
+      </div>
+      <a class="btn small" href="{{ url_for('admin.pac_export', kind='responsaveis') }}">Baixar Excel</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>E-mail</th><th>Idade</th><th>Filhos</th><th>Ação</th></tr></thead>
+        <tbody>
+          {% for r in responsaveis %}
+          <tr>
+            <td>{{ r.nome }}</td><td>{{ r.cpf }}</td><td>{{ r.telefone }}</td><td>{{ r.email }}</td><td>{{ r.idade }}</td><td>{{ r.quantidade_filhos }}</td>
+            <td><a class="link-btn" href="{{ url_for('admin.pac', cpf=r.cpf) }}">Árvore</a></td>
+          </tr>
+          {% else %}<tr><td colspan="7">Nenhuma mãe responsável encontrada com perfil PAC e menor_idade = false.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% if selected_cpf %}
+  <section class="table-panel accent-panel">
+    <div class="table-head">
+      <div><h2>Árvore familiar</h2><p>CPF responsável: {{ selected_cpf }}</p></div>
+      <a class="btn secondary small" href="{{ url_for('admin.pac') }}">Fechar árvore</a>
+    </div>
+    <div class="family-tree">
+      {% for f in filhos %}
+      <div class="child-node"><strong>{{ f.nome }}</strong><span>{{ f.idade }} anos · {{ f.sexo }}</span><small>{{ f.apadrinhamento }}{% if f.padrinho_nome %} · {{ f.padrinho_nome }}{% endif %}</small></div>
+      {% else %}<p>Nenhum filho encontrado para esta responsável.</p>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="table-panel">
+    <div class="table-head">
+      <div><h2>Crianças PAC</h2><p>Base enriquecida com responsável e apadrinhamento.</p></div>
+      <a class="btn small" href="{{ url_for('admin.pac_export', kind='criancas') }}">Baixar Excel</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Criança</th><th>CPF/RG</th><th>Idade</th><th>Sexo</th><th>Responsável</th><th>Apadrinhamento</th><th>Padrinho</th></tr></thead>
+        <tbody>
+          {% for c in criancas %}
+          <tr><td>{{ c.crianca_nome }}</td><td>{{ c.crianca_cpf }}</td><td>{{ c.idade }}</td><td>{{ c.sexo }}</td><td>{{ c.responsavel_nome }}</td><td><span class="badge">{{ c.apadrinhamento }}</span></td><td>{{ c.padrinho_nome or '-' }}</td></tr>
+          {% else %}<tr><td colspan="7">Nenhuma criança PAC encontrada.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>{% endblock %}

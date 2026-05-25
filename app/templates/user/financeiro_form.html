@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% set body_class = 'public-bg' %}
+{% block title %}{{ cfg.title }}{% endblock %}
+{% block body %}
+<main class="public-container narrow">
+  {% set title = cfg.title %}{% set subtitle = cfg.subtitle %}
+  {% include 'partials/user_header.html' %}
+  <section class="pix-box">
+    <strong>Pix CUSLE</strong>
+    <span>{{ pix_chave }}</span>
+    <small>Favorecido: {{ pix_nome }}</small>
+  </section>
+  <form class="form-card" method="post" enctype="multipart/form-data">
+    <div class="form-grid two">
+      <label>Nome completo *<input name="nome" required></label>
+      <label>CPF<input name="cpf" data-mask="cpf"></label>
+      <label>Telefone / WhatsApp<input name="telefone" data-mask="phone"></label>
+      {% if cfg.show_month %}
+        <label>Mês de referência
+          <select name="mes_referencia" required>
+            <option value="">Selecione</option>
+            {% for mes in meses_referencia %}
+              <option value="{{ mes.value }}">{{ mes.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      {% endif %}
+      <label>Valor da mensalidade *<input name="valor" required data-money placeholder="Ex: 50,00"></label>
+      <label>Comprovante *<input name="comprovante" type="file" required accept=".pdf,.png,.jpg,.jpeg,.webp"></label>
+    </div>
+
+    {% if cfg.show_extra_options %}
+      <div class="extra-payments">
+        <label class="check"><input type="checkbox" name="tem_contribuicao_voluntaria" data-check-target="boxContribuicaoVoluntaria"> Incluir contribuição voluntária</label>
+        <div id="boxContribuicaoVoluntaria" class="form-grid hidden">
+          <label>Valor da contribuição voluntária<input name="valor_contribuicao_voluntaria" data-money placeholder="Ex: 20,00"></label>
+        </div>
+
+        <label class="check"><input type="checkbox" name="tem_cesta_basica" data-check-target="boxCestaBasica"> Incluir cesta básica PAC</label>
+        <div id="boxCestaBasica" class="form-grid two hidden">
+          <label>Quantidade de cestas<input name="qtd_cestas" type="number" min="1" step="1" placeholder="Ex: 1"></label>
+          <label>Valor unitário configurado<input value="{{ cesta_basica_valor|brl }}" disabled></label>
+        </div>
+      </div>
+    {% endif %}
+
+    <label>Observação / justificativa<textarea name="justificativa" rows="4"></textarea></label>
+    <div class="actions"><button class="btn secondary js-back" type="button">Voltar</button><button class="btn" type="submit">Enviar comprovante</button></div>
+  </form>
+</main>
+{% endblock %}

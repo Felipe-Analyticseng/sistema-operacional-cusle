@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% set body_class = 'public-bg' %}
+{% block body %}
+<main class="public-container">
+  {% include 'partials/user_header.html' %}
+  <section class="form-card center-text">
+    <h2>{{ title }}</h2>
+    <p>Conteúdo em desenvolvimento</p>
+    <a class="btn secondary" href="{{ url_for('user.home') }}">Voltar</a>
+  </section>
+</main>
+{% endblock %}

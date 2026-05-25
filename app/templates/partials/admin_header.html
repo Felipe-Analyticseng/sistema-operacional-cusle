@@ -1,0 +1,19 @@
+<aside class="admin-sidebar">
+  <div class="admin-brand">
+    <img src="{{ url_for('static', filename='img/logo_cusle.png') }}" alt="CUSLE">
+    <div>
+      <strong>Admin CUSLE</strong>
+      <span>{{ session.get('admin', {}).get('email', '') }}</span>
+    </div>
+  </div>
+  <nav>
+    <a href="{{ url_for('admin.pac') }}">Dashboard PAC</a>
+    <a href="{{ url_for('admin.financeiro') }}">Financeiro - Conciliação</a>
+    <a href="{{ url_for('admin.financeiro_dashboard') }}">Financeiro Dashboard</a>
+    <a href="{{ url_for('admin.limpeza') }}">Limpeza</a>
+    <a href="{{ url_for('admin.faltas') }}">Faltas</a>
+    <a href="{{ url_for('admin.portal_usuarios') }}">Usuários Portal</a>
+  </nav>
+  <a class="logout" href="{{ url_for('user.home') }}">Portal usuário</a>
+  <a class="logout" href="{{ url_for('admin.logout') }}">Sair</a>
+</aside>

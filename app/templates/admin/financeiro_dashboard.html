@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% set body_class = 'admin-bg' %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>{% endblock %}
+{% block body %}
+{% include 'partials/admin_header.html' %}
+<main class="admin-main">
+  <div class="admin-title">
+    <p class="eyebrow">Análise financeira</p>
+    <h1>Financeiro Dashboard</h1>
+    <span>Indicadores de movimentações, pessoas em dia e inadimplentes.</span>
+  </div>
+
+  <section class="filter-panel">
+    <form method="get" class="filter-form">
+      <label>Sazonalidade
+        <select name="sazonalidade">
+          {% for item in ['Dia','Semana','Mês','Ano'] %}<option value="{{ item }}" {% if item == sazonalidade %}selected{% endif %}>{{ item }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Data inicial<input type="date" name="data_inicio" value="{{ data_inicio or '' }}"></label>
+      <label>Data final<input type="date" name="data_fim" value="{{ data_fim or '' }}"></label>
+      <label>Tipo<select name="tipo">{% for item in tipos %}<option value="{{ item }}" {% if item == tipo %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+      <label>Status<select name="status">{% for item in status_options %}<option value="{{ item }}" {% if item == status %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+      <label>Nome<input name="nome" value="{{ nome }}" placeholder="Buscar pessoa"></label>
+      <button class="btn small" type="submit">Filtrar</button>
+    </form>
+  </section>
+
+  <section class="kpi-grid six">
+    <div class="kpi"><span>Total de Registros</span><strong>{{ resumo.total }}</strong><small>Movimentações filtradas</small></div>
+    <div class="kpi"><span>Valor Total</span><strong>{{ valor_total_formatado }}</strong><small>Soma geral informada</small></div>
+    <div class="kpi"><span>Valor Em Dia</span><strong>{{ valor_pago_formatado }}</strong><small>Status aprovado</small></div>
+    <div class="kpi"><span>Valor Pendente</span><strong>{{ valor_pendente_formatado }}</strong><small>Status diferente de aprovado</small></div>
+    <div class="kpi"><span>Inadimplentes</span><strong>{{ dashboard_counts.inadimplentes }}</strong><small>Pessoas com mensalidade pendente</small></div>
+    <div class="kpi"><span>Em Dia</span><strong>{{ dashboard_counts.em_dia }}</strong><small>Pessoas sem pendências</small></div>
+  </section>
+
+  <section class="dashboard-grid one-col">
+    <article class="panel panel-tall">
+      <div><h2>Mensalidades por mês</h2><p>Em dia em azul; inadimplentes em vermelho.</p></div>
+      <canvas id="chartPagamentos"></canvas>
+    </article>
+  </section>
+
+  <section class="table-panel">
+    <div class="table-head">
+      <div><h2>Mensalidades Em Dia</h2><p>Pessoas sem mensalidades pendentes no período carregado.</p></div>
+      <span class="badge">Página {{ pagina_em_dia }} de {{ total_paginas_em_dia }}</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nome</th><th>Email</th><th>Telefone</th><th>Mensalidades em dia</th><th>Pendentes</th></tr></thead>
+        <tbody>
+          {% for r in pagas %}
+            <tr><td>{{ r.nome }}</td><td>{{ r.email or '-' }}</td><td>{{ r.telefone or '-' }}</td><td>{{ r.mensalidades_em_dia }}</td><td>{{ r.mensalidades_pendentes }}</td></tr>
+          {% else %}<tr><td colspan="5">Nenhuma pessoa totalmente em dia encontrada.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="actions">
+      {% if pagina_em_dia > 1 %}<a class="btn secondary small" href="{{ url_for('admin.financeiro_dashboard', sazonalidade=sazonalidade, data_inicio=data_inicio, data_fim=data_fim, tipo=tipo, status=status, nome=nome, pagina_em_dia=pagina_em_dia-1, pagina_inadimplentes=pagina_inadimplentes) }}">Anterior</a>{% endif %}
+      {% if pagina_em_dia < total_paginas_em_dia %}<a class="btn secondary small" href="{{ url_for('admin.financeiro_dashboard', sazonalidade=sazonalidade, data_inicio=data_inicio, data_fim=data_fim, tipo=tipo, status=status, nome=nome, pagina_em_dia=pagina_em_dia+1, pagina_inadimplentes=pagina_inadimplentes) }}">Próxima</a>{% endif %}
+    </div>
+  </section>
+
+  <section class="table-panel">
+    <div class="table-head">
+      <div><h2>Mensalidades Inadimplentes</h2><p>Agrupada do maior para o menor volume de pendências.</p></div>
+      <span class="badge">Página {{ pagina_inadimplentes }} de {{ total_paginas_inadimplentes }}</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nome</th><th>Email</th><th>Telefone</th><th>Mensalidades em dia</th><th>Mensalidades pendentes</th></tr></thead>
+        <tbody>
+          {% for r in atrasadas %}
+            <tr><td>{{ r.nome }}</td><td>{{ r.email or '-' }}</td><td>{{ r.telefone or '-' }}</td><td>{{ r.mensalidades_em_dia }}</td><td><span class="badge">{{ r.mensalidades_pendentes }}</span></td></tr>
+          {% else %}<tr><td colspan="5">Nenhuma mensalidade atrasada encontrada.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="actions">
+      {% if pagina_inadimplentes > 1 %}<a class="btn secondary small" href="{{ url_for('admin.financeiro_dashboard', sazonalidade=sazonalidade, data_inicio=data_inicio, data_fim=data_fim, tipo=tipo, status=status, nome=nome, pagina_em_dia=pagina_em_dia, pagina_inadimplentes=pagina_inadimplentes-1) }}">Anterior</a>{% endif %}
+      {% if pagina_inadimplentes < total_paginas_inadimplentes %}<a class="btn secondary small" href="{{ url_for('admin.financeiro_dashboard', sazonalidade=sazonalidade, data_inicio=data_inicio, data_fim=data_fim, tipo=tipo, status=status, nome=nome, pagina_em_dia=pagina_em_dia, pagina_inadimplentes=pagina_inadimplentes+1) }}">Próxima</a>{% endif %}
+    </div>
+  </section>
+</main>
+<script>
+const rows = {{ chart_rows|tojson }};
+const ctx = document.getElementById('chartPagamentos');
+if (ctx) {
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map((item) => item.mes),
+      datasets: [
+        {label: 'Em dia', data: rows.map((item) => item.em_dia), backgroundColor: '#486FA7', borderRadius: 8},
+        {label: 'Inadimplentes', data: rows.map((item) => item.inadimplentes), backgroundColor: '#D92D20', borderRadius: 8}
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {legend: {display: true}},
+      scales: {x: {stacked: true, grid: {display: false}}, y: {stacked: true, beginAtZero: true, ticks: {precision: 0}}}
+    }
+  });
+}
+</script>
+{% endblock %}

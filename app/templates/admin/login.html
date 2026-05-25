@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% set body_class = 'login-bg' %}
+{% block body %}
+<main class="login-wrap">
+  <section class="login-card">
+    <img src="{{ url_for('static', filename='img/logo_cusle.png') }}" alt="CUSLE">
+    <p class="eyebrow">Área restrita</p>
+    <h1>Admin CUSLE</h1>
+    <p>Acesso administrativo protegido para dados sensíveis, comprovantes e dashboards.</p>
+    <form method="post">
+      <label>E-mail<input name="usuario" type="email" required></label>
+      <label>Senha<input name="senha" type="password" required></label>
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% set body_class = 'public-bg' %}
+{% block body %}
+<main class="public-container narrow">
+  {% set title = 'Limpeza' %}{% set subtitle = 'Registre sua participação na organização da limpeza.' %}
+  {% include 'partials/user_header.html' %}
+  <form class="form-card" method="post">
+    <div class="form-grid two">
+      <label>Nome completo *<input name="nome" required></label>
+      <label>CPF<input name="cpf" data-mask="cpf"></label>
+      <label>Data da faxina *<input name="data_faxina" type="date" required></label>
+    </div>
+    <label>Observação<textarea name="observacao" rows="4"></textarea></label>
+    <div class="actions"><a class="btn secondary" href="{{ url_for('user.home') }}">Voltar</a><button class="btn" type="submit">Registrar participação</button></div>
+  </form>
+</main>
+{% endblock %}
