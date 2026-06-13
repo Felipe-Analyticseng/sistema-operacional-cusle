@@ -5,7 +5,7 @@ from typing import Literal
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from db.database import execute_command, execute_returning, fetch_one, run_query
-from services.cadastro_service import buscar_cadastro_por_cpf, only_digits
+from services.cadastro_service import buscar_cadastro_por_cpf, buscar_cadastro_por_email, only_digits
 from core.auth import autenticar_admin
 
 APPROVED = "aprovado"
@@ -49,8 +49,8 @@ def ensure_portal_tables() -> None:
     )
 
 
-def _cadastro_snapshot(cpf: str | None) -> dict:
-    cadastro = buscar_cadastro_por_cpf(cpf or "")
+def _cadastro_snapshot(cpf: str | None, email: str | None = None) -> dict:
+    cadastro = buscar_cadastro_por_cpf(cpf or "") or buscar_cadastro_por_email(email)
     return {
         "cadastro_id": cadastro.get("id") if cadastro else None,
         "nome": cadastro.get("nome") if cadastro else None,
@@ -79,7 +79,7 @@ def registrar_usuario_portal(email: str, cpf: str, senha: str, confirmar_senha: 
     if existente:
         raise ValueError("Já existe uma solicitação para este e-mail. Consulte o status ou tente fazer login.")
 
-    cadastro = _cadastro_snapshot(cpf_limpo)
+    cadastro = _cadastro_snapshot(cpf_limpo, email_limpo)
     return execute_returning(
         """
         INSERT INTO cadastro.portal_users
@@ -111,17 +111,21 @@ def buscar_status_portal(email: str | None = None, cpf: str | None = None) -> di
             pu.id,
             COALESCE(c.nome, pu.nome) AS nome,
             COALESCE(c.perfil, pu.perfil) AS perfil,
-            pu.cpf,
-            pu.email,
+            COALESCE(c.cpf, pu.cpf) AS cpf,
+            COALESCE(c.email, pu.email) AS email,
             pu.status,
             pu.observacao_admin,
             pu.created_at,
             pu.updated_at
         FROM cadastro.portal_users pu
         LEFT JOIN cadastro.cadastro c
-            ON c.cpf = pu.cpf
+            ON (
+                regexp_replace(COALESCE(pu.cpf, ''), '[^0-9]', '', 'g') <> ''
+                AND regexp_replace(COALESCE(c.cpf, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(pu.cpf, ''), '[^0-9]', '', 'g')
+                OR LOWER(COALESCE(c.email, '')) = LOWER(COALESCE(pu.email, ''))
+            )
         WHERE (:email IS NOT NULL AND LOWER(pu.email) = :email)
-           OR (:cpf IS NOT NULL AND pu.cpf = :cpf)
+           OR (:cpf IS NOT NULL AND regexp_replace(COALESCE(pu.cpf, ''), '[^0-9]', '', 'g') = :cpf)
         ORDER BY pu.created_at DESC
         LIMIT 1;
         """,
@@ -130,7 +134,7 @@ def buscar_status_portal(email: str | None = None, cpf: str | None = None) -> di
     if row:
         return row
 
-    cadastro = buscar_cadastro_por_cpf(cpf_limpo or "") if cpf_limpo else None
+    cadastro = buscar_cadastro_por_cpf(cpf_limpo or "") or buscar_cadastro_por_email(email_limpo)
     if cadastro:
         return {
             "nome": cadastro.get("nome"),
@@ -182,13 +186,17 @@ def autenticar_usuario_portal(email: str, senha: str) -> dict | None:
             pu.id,
             COALESCE(c.nome, pu.nome) AS nome,
             COALESCE(c.perfil, pu.perfil) AS perfil,
-            pu.cpf,
-            pu.email,
+            COALESCE(c.cpf, pu.cpf) AS cpf,
+            COALESCE(c.email, pu.email) AS email,
             pu.password_hash,
             pu.status
         FROM cadastro.portal_users pu
         LEFT JOIN cadastro.cadastro c
-            ON c.cpf = pu.cpf
+            ON (
+                regexp_replace(COALESCE(pu.cpf, ''), '[^0-9]', '', 'g') <> ''
+                AND regexp_replace(COALESCE(c.cpf, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(pu.cpf, ''), '[^0-9]', '', 'g')
+                OR LOWER(COALESCE(c.email, '')) = LOWER(COALESCE(pu.email, ''))
+            )
         WHERE LOWER(pu.email) = :email
         LIMIT 1;
         """,
@@ -211,15 +219,19 @@ def listar_solicitacoes_portal():
             pu.id,
             COALESCE(c.nome, pu.nome) AS nome,
             COALESCE(c.perfil, pu.perfil) AS perfil,
-            pu.cpf,
-            pu.email,
+            COALESCE(c.cpf, pu.cpf) AS cpf,
+            COALESCE(c.email, pu.email) AS email,
             pu.status,
             pu.observacao_admin,
             pu.created_at,
             pu.updated_at
         FROM cadastro.portal_users pu
         LEFT JOIN cadastro.cadastro c
-            ON c.cpf = pu.cpf
+            ON (
+                regexp_replace(COALESCE(pu.cpf, ''), '[^0-9]', '', 'g') <> ''
+                AND regexp_replace(COALESCE(c.cpf, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(pu.cpf, ''), '[^0-9]', '', 'g')
+                OR LOWER(COALESCE(c.email, '')) = LOWER(COALESCE(pu.email, ''))
+            )
         ORDER BY
             CASE pu.status
                 WHEN 'pendente' THEN 1
@@ -242,7 +254,11 @@ def atualizar_status_usuario_portal(user_id: int, status: Literal["pendente", "a
         SELECT pu.cpf, c.id AS cadastro_id, c.nome, c.perfil
         FROM cadastro.portal_users pu
         LEFT JOIN cadastro.cadastro c
-            ON c.cpf = pu.cpf
+            ON (
+                regexp_replace(COALESCE(pu.cpf, ''), '[^0-9]', '', 'g') <> ''
+                AND regexp_replace(COALESCE(c.cpf, ''), '[^0-9]', '', 'g') = regexp_replace(COALESCE(pu.cpf, ''), '[^0-9]', '', 'g')
+                OR LOWER(COALESCE(c.email, '')) = LOWER(COALESCE(pu.email, ''))
+            )
         WHERE pu.id = :user_id
         LIMIT 1;
         """,

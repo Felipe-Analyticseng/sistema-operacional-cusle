@@ -3,6 +3,8 @@ function maskCpf(v){v=onlyDigits(v).slice(0,11);return v.replace(/(\d{3})(\d)/,'
 function maskPhone(v){v=onlyDigits(v).slice(0,11);return v.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{5})(\d)/,'$1-$2')}
 function money(v){v=onlyDigits(v); if(!v) return ''; v=(parseInt(v,10)/100).toFixed(2)+''; return v.replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.')}
 document.addEventListener('input',e=>{const el=e.target;if(el.dataset.mask==='cpf')el.value=maskCpf(el.value);if(el.dataset.mask==='phone')el.value=maskPhone(el.value);if(el.dataset.money!==undefined)el.value=money(el.value)});
+document.querySelectorAll('[data-mask="cpf"]').forEach(el=>{el.value=maskCpf(el.value)});
+document.querySelectorAll('[data-mask="phone"]').forEach(el=>{el.value=maskPhone(el.value)});
 document.addEventListener('change',e=>{const el=e.target;if(el.dataset.toggleTarget){const target=document.getElementById(el.dataset.toggleTarget);if(target)target.classList.toggle('hidden',el.value!=='Sim')}if(el.dataset.checkTarget){const target=document.getElementById(el.dataset.checkTarget);if(target)target.classList.toggle('hidden',!el.checked)}});
 const qtd=document.getElementById('qtdFilhos'); const container=document.getElementById('filhosContainer');
 function optionList(items){return items.map(x=>`<option value="${x}">${x||'Selecione'}</option>`).join('')}

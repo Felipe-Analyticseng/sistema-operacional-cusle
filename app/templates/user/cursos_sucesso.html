@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% set body_class = 'public-bg' %}
+{% block title %}{{ title }}{% endblock %}
+{% block body %}
+<main class="public-container narrow">
+  {% include 'partials/user_header.html' %}
+
+  <section class="form-card">
+    <div class="section-heading">
+      <span>OK</span>
+      <div>
+        <h2>Inscrição registrada</h2>
+        <p>Suas inscrições ficam vinculadas ao seu cadastro oficial.</p>
+      </div>
+    </div>
+
+    <div class="status-box">
+      <strong>{{ cadastro_user.nome }}</strong>
+      <span>{{ cadastro_user.email }}</span>
+      <small>CPF: {{ cadastro_user.cpf }} | Telefone: {{ cadastro_user.telefone or '-' }}</small>
+      <small>Perfil: {{ perfil_labels.get(cadastro_user.perfil, cadastro_user.perfil or '-') }}</small>
+    </div>
+
+    <div class="course-summary-list">
+      {% for curso in cursos %}
+        <div class="course-summary-item">
+          <strong>{{ curso.curso_nome }}</strong>
+          <small>{{ curso.data_turma|datebr if curso.data_turma else 'UPI / sem data fixa' }}</small>
+        </div>
+      {% else %}
+        <div class="empty">Nenhum curso selecionado.</div>
+      {% endfor %}
+    </div>
+
+    <div class="actions">
+      <a class="btn secondary" href="{{ url_for('user.home') }}">Voltar ao portal</a>
+      <a class="btn" href="{{ url_for('user.cursos') }}">Ver cursos</a>
+    </div>
+  </section>
+</main>
+{% endblock %}

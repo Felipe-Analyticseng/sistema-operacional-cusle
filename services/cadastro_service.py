@@ -103,11 +103,44 @@ def buscar_cadastro_por_cpf(cpf: str) -> dict | None:
             responsavel_nome,
             responsavel_cpf
         FROM cadastro.cadastro
-        WHERE cpf = :cpf
+        WHERE regexp_replace(COALESCE(cpf, ''), '[^0-9]', '', 'g') = :cpf
         LIMIT 1;
         """,
         {
             "cpf": cpf_limpo,
+        },
+    )
+
+
+def buscar_cadastro_por_email(email: str | None) -> dict | None:
+    """
+    Busca uma pessoa na tabela cadastro.cadastro pelo e-mail normalizado.
+    """
+    email_limpo = (email or "").strip().lower()
+
+    if not email_limpo:
+        return None
+
+    return fetch_one(
+        """
+        SELECT
+            id,
+            nome,
+            email,
+            cpf,
+            participa_curso,
+            perfil,
+            telefone,
+            data_nascimento,
+            menor_idade,
+            responsavel_nome,
+            responsavel_cpf
+        FROM cadastro.cadastro
+        WHERE LOWER(COALESCE(email, '')) = :email
+        LIMIT 1;
+        """,
+        {
+            "email": email_limpo,
         },
     )
 

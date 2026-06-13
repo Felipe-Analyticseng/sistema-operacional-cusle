@@ -12,9 +12,9 @@
   </section>
   <form class="form-card" method="post" enctype="multipart/form-data">
     <div class="form-grid two">
-      <label>Nome completo *<input name="nome" required></label>
-      <label>CPF<input name="cpf" data-mask="cpf"></label>
-      <label>Telefone / WhatsApp<input name="telefone" data-mask="phone"></label>
+      <label>Nome completo *<input name="nome" value="{{ cadastro_user.nome or '' }}" required{% if cadastro_user.nome %} readonly{% endif %}></label>
+      <label>CPF<input name="cpf" value="{{ cadastro_user.cpf or '' }}" data-mask="cpf"{% if cadastro_user.cpf %} readonly{% endif %}></label>
+      <label>Telefone / WhatsApp<input name="telefone" value="{{ cadastro_user.telefone or '' }}" data-mask="phone"{% if cadastro_user.telefone %} readonly{% endif %}></label>
       {% if cfg.show_month %}
         <label>Mês de referência
           <select name="mes_referencia" required>

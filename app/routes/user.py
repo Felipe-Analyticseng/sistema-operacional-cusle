@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import date
-
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from config.settings import CESTA_BASICA_PAC_VALOR, PIX_CUSLE_CHAVE, PIX_CUSLE_NOME
@@ -11,12 +9,20 @@ from services.financeiro_service import (
     registrar_comprovante_pac_contribuicao,
 )
 from services.conteudo_service import obter_conteudo
+from services.cursos_service import (
+    PERFIL_LABELS,
+    catalogo_para_ui,
+    listar_inscricoes_cadastro,
+    normalizar_perfil,
+    registrar_cursos,
+)
 from services.pac_service import (
     cadastrar_familia_pac,
     listar_criancas_disponiveis_apadrinhamento,
     listar_filhes_santo_apadrinhamento,
     registrar_apadrinhamento_pac,
 )
+from services.cadastro_service import buscar_cadastro_por_cpf, buscar_cadastro_por_email
 from services.portal_auth_service import (
     autenticar_usuario_portal,
     buscar_status_portal,
@@ -67,12 +73,10 @@ def _opcoes_mes_referencia() -> list[dict[str, str]]:
         "Novembro",
         "Dezembro",
     ]
-    ano_atual = date.today().year
-    anos = range(ano_atual - 1, ano_atual + 2)
+    ano = 2026
 
     return [
         {"value": f"{mes:02d}/{ano}", "label": f"{meses[mes - 1]}/{ano}"}
-        for ano in anos
         for mes in range(1, 13)
     ]
 
@@ -101,6 +105,28 @@ def _calcular_total_mensalidade(form) -> tuple[str, str | None]:
     return _format_decimal_br(total), " | ".join(detalhes)
 
 
+def _portal_user() -> dict:
+    return session.get("portal_user") or {}
+
+
+def _portal_cadastro() -> dict:
+    usuario = _portal_user()
+    cadastro = buscar_cadastro_por_cpf(usuario.get("cpf"))
+    if cadastro:
+        return cadastro
+    return buscar_cadastro_por_email(usuario.get("email")) or {}
+
+
+def _cadastro_form_data() -> dict:
+    cadastro = _portal_cadastro()
+    data = dict(cadastro)
+    data_nascimento = data.get("data_nascimento")
+    data["data_nascimento_input"] = data_nascimento.isoformat() if hasattr(data_nascimento, "isoformat") else (data_nascimento or "")
+    data["menor_idade_value"] = "" if data.get("menor_idade") is None else ("sim" if data.get("menor_idade") else "nao")
+    data["perfil"] = normalizar_perfil(data.get("perfil"))
+    return data
+
+
 @bp.get("/")
 def landing():
     return render_template("user/landing.html")
@@ -114,7 +140,7 @@ def home():
         {"title": "PAC - Programa Acolhe CUSLE", "desc": "Cadastro assistido, apadrinhamento e contribuição.", "url": url_for("user.pac_menu")},
         {"title": "Medicina", "desc": "Conteúdo reservado para orientações.", "url": url_for("user.placeholder", area="medicina")},
         {"title": "Assistência", "desc": "Frentes assistenciais e apoio.", "url": url_for("user.placeholder", area="assistencia")},
-        {"title": "Cursos e Capacitações", "desc": "Acesse a ficha oficial de cadastro para cursos.", "url": "https://ficha-cadastro.onrender.com/", "external": True},
+        {"title": "Cursos e Capacitações", "desc": "Inscrição em cursos e capacitações da CUSLE.", "url": url_for("user.cursos")},
     ]
     return render_template("user/home.html", title="Portal CUSLE", subtitle=None, cards=cards, is_home=True)
 
@@ -192,9 +218,14 @@ def financeiro(tipo: str):
         return redirect(url_for("user.home"))
     if request.method == "POST":
         try:
-            nome = request.form.get("nome")
-            cpf = request.form.get("cpf")
-            telefone = request.form.get("telefone")
+            usuario = _portal_user()
+            cadastro = _portal_cadastro()
+            if usuario and not usuario.get("is_admin") and not cadastro:
+                raise ValueError("Nao encontramos seu cadastro pelo CPF ou e-mail do login. Entre em contato com a administracao para atualizar seu cadastro.")
+
+            nome = cadastro.get("nome") or request.form.get("nome")
+            cpf = cadastro.get("cpf") or request.form.get("cpf")
+            telefone = cadastro.get("telefone") or request.form.get("telefone")
             valor = request.form.get("valor")
             justificativa = request.form.get("justificativa")
             arquivo = request.files.get("comprovante")
@@ -216,6 +247,54 @@ def financeiro(tipo: str):
         pix_nome=PIX_CUSLE_NOME,
         cesta_basica_valor=float(CESTA_BASICA_PAC_VALOR or 0),
         meses_referencia=_opcoes_mes_referencia(),
+        cadastro_user=_portal_cadastro(),
+    )
+
+
+@bp.route("/cursos", methods=["GET", "POST"])
+@portal_required
+def cursos():
+    cadastro = _cadastro_form_data()
+    usuario = _portal_user()
+    if usuario and not usuario.get("is_admin") and not cadastro:
+        flash("Nao encontramos seu cadastro pelo CPF ou e-mail do login. Entre em contato com a administracao para atualizar seu cadastro.", "danger")
+        return redirect(url_for("user.home"))
+
+    if request.method == "POST":
+        try:
+            registrar_cursos(cadastro, request.form)
+            flash("Inscrição registrada com sucesso.", "success")
+            return redirect(url_for("user.cursos_sucesso"))
+        except Exception as exc:
+            flash(str(exc), "danger")
+
+    inscricoes = listar_inscricoes_cadastro(cadastro["id"]) if cadastro.get("id") else []
+    return render_template(
+        "user/cursos_form.html",
+        title="Cursos e Capacitações",
+        subtitle="Escolha os cursos disponíveis para seu perfil.",
+        cadastro_user=cadastro,
+        catalog=catalogo_para_ui(),
+        perfil_labels=PERFIL_LABELS,
+        inscricoes=inscricoes,
+    )
+
+
+@bp.get("/cursos/sucesso")
+@portal_required
+def cursos_sucesso():
+    cadastro = _cadastro_form_data()
+    if not cadastro.get("id"):
+        flash("Cadastro não encontrado.", "danger")
+        return redirect(url_for("user.home"))
+
+    return render_template(
+        "user/cursos_sucesso.html",
+        title="Inscrição registrada",
+        subtitle="Cursos e capacitações CUSLE",
+        cadastro_user=cadastro,
+        cursos=listar_inscricoes_cadastro(cadastro["id"]),
+        perfil_labels=PERFIL_LABELS,
     )
 
 

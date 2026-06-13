@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% set body_class = 'public-bg' %}
+{% block title %}{{ title }}{% endblock %}
+{% block body %}
+<main class="public-container wide-form">
+  {% include 'partials/user_header.html' %}
+
+  {% if inscricoes %}
+    <section class="form-card">
+      <div class="section-heading">
+        <span>{{ inscricoes|length }}</span>
+        <div>
+          <h2>Inscrições já registradas</h2>
+          <p>Cursos vinculados ao seu cadastro.</p>
+        </div>
+      </div>
+      <div class="course-summary-list">
+        {% for curso in inscricoes %}
+          <div class="course-summary-item">
+            <strong>{{ curso.curso_nome }}</strong>
+            <small>{{ curso.data_turma|datebr if curso.data_turma else 'UPI / sem data fixa' }}</small>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  <form id="cursoForm" class="form-card" method="post" action="{{ url_for('user.cursos') }}" novalidate>
+    <div class="section-heading">
+      <span>01</span>
+      <div>
+        <h2>Dados do cadastro</h2>
+        <p>Informações carregadas da tabela cadastro.cadastro.</p>
+      </div>
+    </div>
+
+    <div class="form-grid two">
+      <label>Nome completo *
+        <input id="cursoNome" name="nome" value="{{ cadastro_user.nome or '' }}" required{% if cadastro_user.nome %} readonly{% endif %}>
+      </label>
+      <label>E-mail *
+        <input id="cursoEmail" name="email" type="email" value="{{ cadastro_user.email or '' }}" required{% if cadastro_user.email %} readonly{% endif %}>
+      </label>
+      <label>Telefone / WhatsApp *
+        <input id="cursoTelefone" name="telefone" value="{{ cadastro_user.telefone or '' }}" data-mask="phone" required{% if cadastro_user.telefone %} readonly{% endif %}>
+      </label>
+      <label>CPF *
+        <input id="cursoCpf" name="cpf" value="{{ cadastro_user.cpf or '' }}" data-mask="cpf" required{% if cadastro_user.cpf %} readonly{% endif %}>
+      </label>
+      <label>Data de nascimento *
+        <input id="cursoDataNascimento" name="data_nascimento" type="date" value="{{ cadastro_user.data_nascimento_input or '' }}" required{% if cadastro_user.data_nascimento_input %} readonly{% endif %}>
+      </label>
+      <label>É menor de idade? *
+        <select id="cursoMenor" name="menor_idade" required{% if cadastro_user.get('menor_idade') is not none %} disabled{% endif %}>
+          <option value="">Selecione</option>
+          <option value="nao" {% if cadastro_user.menor_idade_value == 'nao' %}selected{% endif %}>Não</option>
+          <option value="sim" {% if cadastro_user.menor_idade_value == 'sim' %}selected{% endif %}>Sim</option>
+        </select>
+        {% if cadastro_user.get('menor_idade') is not none %}<input type="hidden" name="menor_idade" value="{{ cadastro_user.menor_idade_value }}">{% endif %}
+      </label>
+    </div>
+
+    <div id="cursoResponsavelWrap" class="hidden">
+      <div class="section-heading">
+        <span>02</span>
+        <div>
+          <h2>Responsável</h2>
+          <p>Obrigatório para menores de idade.</p>
+        </div>
+      </div>
+      <div class="form-grid two">
+        <label>Nome do responsável
+          <input id="cursoResponsavelNome" name="responsavel_nome" value="{{ cadastro_user.responsavel_nome or '' }}"{% if cadastro_user.responsavel_nome %} readonly{% endif %}>
+        </label>
+        <label>CPF do responsável
+          <input id="cursoResponsavelCpf" name="responsavel_cpf" value="{{ cadastro_user.responsavel_cpf or '' }}" data-mask="cpf"{% if cadastro_user.responsavel_cpf %} readonly{% endif %}>
+        </label>
+      </div>
+    </div>
+
+    <div class="section-heading">
+      <span>03</span>
+      <div>
+        <h2>Inscrição em curso</h2>
+        <p>Escolha uma ou mais opções disponíveis.</p>
+      </div>
+    </div>
+
+    <div class="form-grid two">
+      <label>Deseja participar de algum curso? *
+        <select id="cursoParticipa" name="participa" required>
+          <option value="">Selecione</option>
+          <option value="sim" {% if cadastro_user.participa_curso %}selected{% endif %}>Sim</option>
+          <option value="nao" {% if cadastro_user.participa_curso is sameas false %}selected{% endif %}>Não</option>
+        </select>
+      </label>
+      <label>Perfil *
+        <select id="cursoPerfil" name="perfil" required{% if cadastro_user.perfil %} disabled{% endif %}>
+          <option value="">Selecione</option>
+          {% for value, label in perfil_labels.items() %}
+            <option value="{{ value }}" {% if cadastro_user.perfil == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if cadastro_user.perfil %}<input type="hidden" name="perfil" value="{{ cadastro_user.perfil }}">{% endif %}
+      </label>
+    </div>
+
+    <div id="cursoWrap" class="hidden">
+      <div class="course-head">
+        <strong>Cursos disponíveis</strong>
+        <span>Você pode selecionar 1 ou mais</span>
+      </div>
+      <div id="cursoList" class="course-list"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn secondary js-back" type="button">Voltar</button>
+      <button id="cursoSubmit" class="btn" type="submit" disabled>Registrar inscrição</button>
+    </div>
+  </form>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.__COURSE_CATALOG__ = {{ catalog|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/cursos.js') }}"></script>
+{% endblock %}
