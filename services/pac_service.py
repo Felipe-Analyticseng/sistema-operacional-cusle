@@ -117,7 +117,7 @@ def listar_solicitacoes_pac(status: str | None = None):
             p.status,
             p.created_at
         FROM atendimento.pac_solicitacoes p
-        LEFT JOIN cadastro.cadastro c
+        LEFT JOIN cadastro.cadastro_pac c
             ON c.id = p.cadastro_id
         WHERE (:status IS NULL OR p.status = :status)
         ORDER BY p.created_at DESC;
@@ -173,7 +173,7 @@ def _normalizar_texto(value: str | None) -> str:
 
 
 def garantir_estrutura_pac() -> None:
-    """Cria/ajusta estruturas sem quebrar outros projetos que usam cadastro.cadastro."""
+    """Cria/ajusta estruturas PAC sem quebrar cadastro.cadastro."""
     from db.database import execute_command
 
     execute_command("CREATE SCHEMA IF NOT EXISTS atendimento;")
@@ -181,13 +181,83 @@ def garantir_estrutura_pac() -> None:
 
     execute_command(
         """
-        ALTER TABLE cadastro.cadastro
-            ADD COLUMN IF NOT EXISTS idade INTEGER,
-            ADD COLUMN IF NOT EXISTS sexo VARCHAR(30),
-            ADD COLUMN IF NOT EXISTS possui_deficiencia BOOLEAN DEFAULT FALSE,
-            ADD COLUMN IF NOT EXISTS descricao_deficiencia TEXT,
-            ADD COLUMN IF NOT EXISTS etnia VARCHAR(30),
-            ADD COLUMN IF NOT EXISTS dados_compartilhamento BOOLEAN DEFAULT FALSE;
+        CREATE TABLE IF NOT EXISTS cadastro.cadastro_pac (
+            id SERIAL PRIMARY KEY,
+            nome VARCHAR(200) NOT NULL,
+            email VARCHAR(200),
+            cpf VARCHAR(20) NOT NULL,
+            telefone VARCHAR(30),
+            perfil VARCHAR(50) DEFAULT 'pac',
+            participa_curso BOOLEAN DEFAULT FALSE,
+            data_nascimento DATE,
+            idade INTEGER,
+            menor_idade BOOLEAN,
+            responsavel_nome VARCHAR(200),
+            responsavel_cpf VARCHAR(20),
+            sexo VARCHAR(30),
+            possui_deficiencia BOOLEAN DEFAULT FALSE,
+            descricao_deficiencia TEXT,
+            etnia VARCHAR(30),
+            dados_compartilhamento BOOLEAN DEFAULT FALSE,
+            foto_path TEXT,
+            nome_social VARCHAR(200),
+            endereco_completo TEXT,
+            estado_civil VARCHAR(100),
+            com_quem_mora TEXT,
+            situacao_trabalho VARCHAR(120),
+            renda_mensal VARCHAR(120),
+            renda_familiar VARCHAR(120),
+            cadastro_unico VARCHAR(120),
+            beneficios TEXT,
+            problema_saude TEXT,
+            medicacao_continua TEXT,
+            acompanhamento_psicologico VARCHAR(80),
+            alergia TEXT,
+            filho_saude_alergia TEXT,
+            filho_medicacao TEXT,
+            refeicoes_dia VARCHAR(120),
+            moradia VARCHAR(80),
+            saneamento_basico VARCHAR(80),
+            apoio_interesse TEXT,
+            dificuldades TEXT,
+            pode_oficina TEXT,
+            rg_cpf TEXT,
+            sugestao_pac TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        """
+    )
+
+    execute_command(
+        """
+        ALTER TABLE cadastro.cadastro_pac
+            ADD COLUMN IF NOT EXISTS participa_curso BOOLEAN DEFAULT FALSE,
+            ADD COLUMN IF NOT EXISTS foto_path TEXT,
+            ADD COLUMN IF NOT EXISTS nome_social VARCHAR(200),
+            ADD COLUMN IF NOT EXISTS endereco_completo TEXT,
+            ADD COLUMN IF NOT EXISTS estado_civil VARCHAR(100),
+            ADD COLUMN IF NOT EXISTS com_quem_mora TEXT,
+            ADD COLUMN IF NOT EXISTS situacao_trabalho VARCHAR(120),
+            ADD COLUMN IF NOT EXISTS renda_mensal VARCHAR(120),
+            ADD COLUMN IF NOT EXISTS renda_familiar VARCHAR(120),
+            ADD COLUMN IF NOT EXISTS cadastro_unico VARCHAR(120),
+            ADD COLUMN IF NOT EXISTS beneficios TEXT,
+            ADD COLUMN IF NOT EXISTS problema_saude TEXT,
+            ADD COLUMN IF NOT EXISTS medicacao_continua TEXT,
+            ADD COLUMN IF NOT EXISTS acompanhamento_psicologico VARCHAR(80),
+            ADD COLUMN IF NOT EXISTS alergia TEXT,
+            ADD COLUMN IF NOT EXISTS filho_saude_alergia TEXT,
+            ADD COLUMN IF NOT EXISTS filho_medicacao TEXT,
+            ADD COLUMN IF NOT EXISTS refeicoes_dia VARCHAR(120),
+            ADD COLUMN IF NOT EXISTS moradia VARCHAR(80),
+            ADD COLUMN IF NOT EXISTS saneamento_basico VARCHAR(80),
+            ADD COLUMN IF NOT EXISTS apoio_interesse TEXT,
+            ADD COLUMN IF NOT EXISTS dificuldades TEXT,
+            ADD COLUMN IF NOT EXISTS pode_oficina TEXT,
+            ADD COLUMN IF NOT EXISTS rg_cpf TEXT,
+            ADD COLUMN IF NOT EXISTS sugestao_pac TEXT,
+            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
         """
     )
 
@@ -223,7 +293,7 @@ def garantir_estrutura_pac() -> None:
 
     execute_command(
         """
-        UPDATE cadastro.cadastro
+        UPDATE cadastro.cadastro_pac
         SET idade = DATE_PART('year', AGE(CURRENT_DATE, data_nascimento))::INT
         WHERE data_nascimento IS NOT NULL
           AND (idade IS NULL OR idade <> DATE_PART('year', AGE(CURRENT_DATE, data_nascimento))::INT);
@@ -243,7 +313,7 @@ def sincronizar_pac_criancas() -> None:
         SELECT DISTINCT
             c.cpf AS crianca_cpf,
             c.nome AS crianca_nome
-        FROM cadastro.cadastro c
+        FROM cadastro.cadastro_pac c
         WHERE LOWER(COALESCE(c.perfil, '')) = 'pac'
           AND COALESCE(c.idade, 999) < 18
           AND c.cpf IS NOT NULL
@@ -259,7 +329,15 @@ def _buscar_cadastro_por_documento(documento: str | None) -> dict | None:
     if not documento_limpo:
         return None
     from db.database import fetch_one
-    return fetch_one("SELECT * FROM cadastro.cadastro WHERE cpf = :cpf LIMIT 1;", {"cpf": documento_limpo})
+    return fetch_one(
+        """
+        SELECT *
+        FROM cadastro.cadastro_pac
+        WHERE regexp_replace(COALESCE(cpf, ''), '[^0-9]', '', 'g') = :cpf
+        LIMIT 1;
+        """,
+        {"cpf": documento_limpo},
+    )
 
 
 def salvar_cadastro_pac_completo(
@@ -275,6 +353,7 @@ def salvar_cadastro_pac_completo(
     dados_compartilhamento: bool,
     responsavel_nome: str | None = None,
     responsavel_cpf: str | None = None,
+    extra: dict | None = None,
 ) -> dict:
     garantir_estrutura_pac()
 
@@ -305,6 +384,7 @@ def salvar_cadastro_pac_completo(
     telefone_limpo = only_digits(telefone)
     responsavel_cpf_limpo = only_digits(responsavel_cpf)
     existente = _buscar_cadastro_por_documento(documento_limpo)
+    extra = extra or {}
 
     params = {
         "nome": nome.strip(),
@@ -321,12 +401,35 @@ def salvar_cadastro_pac_completo(
         "descricao_deficiencia": descricao_deficiencia.strip() if descricao_deficiencia else None,
         "etnia": etnia,
         "dados_compartilhamento": bool(dados_compartilhamento),
+        "nome_social": (extra.get("nome_social") or "").strip() or None,
+        "endereco_completo": (extra.get("endereco_completo") or "").strip() or None,
+        "estado_civil": (extra.get("estado_civil") or "").strip() or None,
+        "com_quem_mora": (extra.get("com_quem_mora") or "").strip() or None,
+        "situacao_trabalho": (extra.get("situacao_trabalho") or "").strip() or None,
+        "renda_mensal": (extra.get("renda_mensal") or "").strip() or None,
+        "renda_familiar": (extra.get("renda_familiar") or "").strip() or None,
+        "cadastro_unico": (extra.get("cadastro_unico") or "").strip() or None,
+        "beneficios": (extra.get("beneficios") or "").strip() or None,
+        "problema_saude": (extra.get("problema_saude") or "").strip() or None,
+        "medicacao_continua": (extra.get("medicacao_continua") or "").strip() or None,
+        "acompanhamento_psicologico": (extra.get("acompanhamento_psicologico") or "").strip() or None,
+        "alergia": (extra.get("alergia") or "").strip() or None,
+        "filho_saude_alergia": (extra.get("filho_saude_alergia") or "").strip() or None,
+        "filho_medicacao": (extra.get("filho_medicacao") or "").strip() or None,
+        "refeicoes_dia": (extra.get("refeicoes_dia") or "").strip() or None,
+        "moradia": (extra.get("moradia") or "").strip() or None,
+        "saneamento_basico": (extra.get("saneamento_basico") or "").strip() or None,
+        "apoio_interesse": (extra.get("apoio_interesse") or "").strip() or None,
+        "dificuldades": (extra.get("dificuldades") or "").strip() or None,
+        "pode_oficina": (extra.get("pode_oficina") or "").strip() or None,
+        "rg_cpf": (extra.get("rg_cpf") or "").strip() or None,
+        "sugestao_pac": (extra.get("sugestao_pac") or "").strip() or None,
     }
 
     if existente:
         cadastro = execute_returning(
             """
-            UPDATE cadastro.cadastro
+            UPDATE cadastro.cadastro_pac
             SET
                 nome = :nome,
                 email = COALESCE(:email, email),
@@ -341,13 +444,37 @@ def salvar_cadastro_pac_completo(
                 descricao_deficiencia = :descricao_deficiencia,
                 etnia = :etnia,
                 dados_compartilhamento = :dados_compartilhamento,
+                nome_social = :nome_social,
+                endereco_completo = :endereco_completo,
+                estado_civil = :estado_civil,
+                com_quem_mora = :com_quem_mora,
+                situacao_trabalho = :situacao_trabalho,
+                renda_mensal = :renda_mensal,
+                renda_familiar = :renda_familiar,
+                cadastro_unico = :cadastro_unico,
+                beneficios = :beneficios,
+                problema_saude = :problema_saude,
+                medicacao_continua = :medicacao_continua,
+                acompanhamento_psicologico = :acompanhamento_psicologico,
+                alergia = :alergia,
+                filho_saude_alergia = :filho_saude_alergia,
+                filho_medicacao = :filho_medicacao,
+                refeicoes_dia = :refeicoes_dia,
+                moradia = :moradia,
+                saneamento_basico = :saneamento_basico,
+                apoio_interesse = :apoio_interesse,
+                dificuldades = :dificuldades,
+                pode_oficina = :pode_oficina,
+                rg_cpf = :rg_cpf,
+                sugestao_pac = :sugestao_pac,
+                updated_at = NOW(),
                 participa_curso = COALESCE(participa_curso, false),
                 perfil = CASE
                     WHEN perfil IS NULL OR TRIM(perfil) = '' THEN 'pac'
                     WHEN LOWER(perfil) = 'pac' THEN 'pac'
                     ELSE perfil
                 END
-            WHERE cpf = :cpf
+            WHERE regexp_replace(COALESCE(cpf, ''), '[^0-9]', '', 'g') = :cpf
             RETURNING *;
             """,
             params,
@@ -357,17 +484,29 @@ def salvar_cadastro_pac_completo(
 
     cadastro = execute_returning(
         """
-        INSERT INTO cadastro.cadastro
+        INSERT INTO cadastro.cadastro_pac
         (
             nome, cpf, email, participa_curso, perfil, data_nascimento,
             idade, menor_idade, responsavel_nome, responsavel_cpf, telefone,
-            sexo, possui_deficiencia, descricao_deficiencia, etnia, dados_compartilhamento
+            sexo, possui_deficiencia, descricao_deficiencia, etnia, dados_compartilhamento,
+            nome_social, endereco_completo, estado_civil, com_quem_mora,
+            situacao_trabalho, renda_mensal, renda_familiar, cadastro_unico,
+            beneficios, problema_saude, medicacao_continua, acompanhamento_psicologico,
+            alergia, filho_saude_alergia, filho_medicacao, refeicoes_dia,
+            moradia, saneamento_basico, apoio_interesse, dificuldades,
+            pode_oficina, rg_cpf, sugestao_pac
         )
         VALUES
         (
             :nome, :cpf, :email, false, 'pac', :data_nascimento,
             :idade, :menor_idade, :responsavel_nome, :responsavel_cpf, :telefone,
-            :sexo, :possui_deficiencia, :descricao_deficiencia, :etnia, :dados_compartilhamento
+            :sexo, :possui_deficiencia, :descricao_deficiencia, :etnia, :dados_compartilhamento,
+            :nome_social, :endereco_completo, :estado_civil, :com_quem_mora,
+            :situacao_trabalho, :renda_mensal, :renda_familiar, :cadastro_unico,
+            :beneficios, :problema_saude, :medicacao_continua, :acompanhamento_psicologico,
+            :alergia, :filho_saude_alergia, :filho_medicacao, :refeicoes_dia,
+            :moradia, :saneamento_basico, :apoio_interesse, :dificuldades,
+            :pode_oficina, :rg_cpf, :sugestao_pac
         )
         RETURNING *;
         """,
@@ -392,6 +531,7 @@ def cadastrar_familia_pac(responsavel: dict, filhos: list[dict] | None = None) -
         descricao_deficiencia=responsavel.get("descricao_deficiencia"),
         etnia=responsavel["etnia"],
         dados_compartilhamento=responsavel.get("dados_compartilhamento", False),
+        extra=responsavel,
     )
 
     cad_resp = resp["cadastro"]
@@ -410,6 +550,11 @@ def cadastrar_familia_pac(responsavel: dict, filhos: list[dict] | None = None) -
             dados_compartilhamento=responsavel.get("dados_compartilhamento", False),
             responsavel_nome=cad_resp.get("nome"),
             responsavel_cpf=cad_resp.get("cpf"),
+            extra={
+                "problema_saude": filho.get("problema_saude"),
+                "alergia": filho.get("alergia"),
+                "medicacao_continua": filho.get("medicacao_continua"),
+            },
         )
         criancas.append(child)
 
@@ -433,7 +578,7 @@ def listar_pac_cadastros():
             id, nome, cpf, email, telefone, data_nascimento, idade, menor_idade,
             responsavel_nome, responsavel_cpf, sexo, possui_deficiencia,
             descricao_deficiencia, etnia, dados_compartilhamento, perfil
-        FROM cadastro.cadastro
+        FROM cadastro.cadastro_pac
         WHERE LOWER(COALESCE(perfil, '')) = 'pac'
         ORDER BY nome;
         """
@@ -463,11 +608,11 @@ def listar_criancas_pac():
             pc.padrinho_cpf,
             pc.data_apadrinhamento
         FROM cadastro._pac_criancas pc
-        INNER JOIN cadastro.cadastro c
+        INNER JOIN cadastro.cadastro_pac c
             ON c.cpf = pc.crianca_cpf
            AND LOWER(COALESCE(c.perfil, '')) = 'pac'
            AND COALESCE(c.idade, 999) < 18
-        LEFT JOIN cadastro.cadastro r
+        LEFT JOIN cadastro.cadastro_pac r
             ON r.cpf = c.responsavel_cpf
         ORDER BY pc.crianca_nome;
         """
@@ -495,8 +640,8 @@ def listar_responsaveis_pac():
             r.email,
             r.idade,
             COALESCE(COUNT(DISTINCT c.cpf), 0) AS quantidade_filhos
-        FROM cadastro.cadastro r
-        LEFT JOIN cadastro.cadastro c
+        FROM cadastro.cadastro_pac r
+        LEFT JOIN cadastro.cadastro_pac c
             ON c.responsavel_cpf = r.cpf
            AND LOWER(COALESCE(c.perfil, '')) = 'pac'
            AND (
@@ -530,7 +675,7 @@ def listar_filhos_por_responsavel(responsavel_cpf: str):
             pc.padrinho_nome,
             pc.data_apadrinhamento
         FROM cadastro._pac_criancas pc
-        INNER JOIN cadastro.cadastro c
+        INNER JOIN cadastro.cadastro_pac c
             ON c.cpf = pc.crianca_cpf
         WHERE c.responsavel_cpf = :responsavel_cpf
           AND LOWER(COALESCE(c.perfil, '')) = 'pac'
@@ -564,7 +709,7 @@ def listar_criancas_disponiveis_apadrinhamento():
             c.idade,
             c.sexo
         FROM cadastro._pac_criancas pc
-        INNER JOIN cadastro.cadastro c
+        INNER JOIN cadastro.cadastro_pac c
             ON c.cpf = pc.crianca_cpf
         WHERE pc.padrinho_cpf IS NULL
           AND LOWER(COALESCE(c.perfil, '')) = 'pac'
@@ -586,7 +731,7 @@ def registrar_apadrinhamento_pac(padrinho_cadastro_id: int, crianca_cadastro_id:
               AND LOWER(COALESCE(perfil, '')) = 'filhes'
         ), crianca AS (
             SELECT id, nome, cpf
-            FROM cadastro.cadastro
+            FROM cadastro.cadastro_pac
             WHERE id = :crianca_id
               AND LOWER(COALESCE(perfil, '')) = 'pac'
               AND COALESCE(idade, 999) < 18

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% set body_class = 'public-bg' %}
+{% block body %}
+<main class="public-container narrow">
+  <section class="hero-card center-text">
+    <p class="eyebrow">Assinatura eletrônica</p>
+    <h1>Assinatura concluída</h1>
+    <p>O lote foi assinado e registrado com segurança.</p>
+    <div class="status-box">
+      <strong>{{ batch_label }}</strong>
+      <span>Processo finalizado.</span>
+    </div>
+  </section>
+</main>
+{% endblock %}

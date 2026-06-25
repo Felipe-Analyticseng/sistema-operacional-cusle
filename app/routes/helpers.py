@@ -65,6 +65,16 @@ def admin_required(view):
     return wrapper
 
 
+def admin_pac_required(view):
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if not session.get("admin_pac_logado"):
+            flash("Faça login para acessar o painel PAC.", "warning")
+            return redirect(url_for("admin_pac.login"))
+        return view(*args, **kwargs)
+    return wrapper
+
+
 def portal_required(view):
     @wraps(view)
     def wrapper(*args, **kwargs):

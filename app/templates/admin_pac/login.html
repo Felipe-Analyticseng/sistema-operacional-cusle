@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% set body_class = 'login-bg' %}
+{% block body %}
+<main class="login-wrap">
+  <section class="login-card">
+    <img src="{{ url_for('static', filename='img/logo_cusle.png') }}" alt="CUSLE">
+    <p class="eyebrow">Admin PAC</p>
+    <h1>Acesso PAC</h1>
+    <p>Painel exclusivo para acompanhamento do Programa Acolhe CUSLE.</p>
+    <form method="post">
+      <label>Usuário<input name="usuario" autocomplete="username" required></label>
+      <label>Senha<input name="senha" type="password" autocomplete="current-password" required></label>
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

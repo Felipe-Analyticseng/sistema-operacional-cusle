@@ -2,12 +2,13 @@
 {% set body_class = 'public-bg' %}
 {% block body %}
 <main class="public-container wide-form">
-  {% set title = 'Cadastro Assistido PAC' %}{% set subtitle = 'Cadastro da pessoa responsável e filhos vinculados ao Programa Acolhe CUSLE.' %}
+  {% set title = 'Cadastro Assistido PAC' %}{% set subtitle = 'Ficha de acolhimento e cadastro da pessoa responsável e filhos.' %}
   {% include 'partials/user_header.html' %}
   <form class="form-card" method="post" id="pacForm">
     <div class="section-heading"><span>01</span><div><h2>Dados da pessoa responsável</h2><p>Todos os campos marcados com * são obrigatórios.</p></div></div>
     <div class="form-grid two">
       <label>Nome completo *<input name="nome" required></label>
+      <label>Nome social<input name="nome_social"></label>
       <label>CPF *<input name="cpf" required data-mask="cpf"></label>
       <label>E-mail *<input name="email" type="email" required></label>
       <label>Telefone / WhatsApp *<input name="telefone" required data-mask="phone"></label>
@@ -15,13 +16,76 @@
       <label>Sexo *<select name="sexo" required>{% for item in sexo %}<option value="{{ item }}">{{ item or 'Selecione' }}</option>{% endfor %}</select></label>
       <label>Etnia *<select name="etnia" required>{% for item in etnias %}<option value="{{ item }}">{{ item or 'Selecione' }}</option>{% endfor %}</select></label>
       <label>Tem alguma deficiência? *<select name="possui_deficiencia" data-toggle-target="respDef"><option>Não</option><option>Sim</option></select></label>
+      <label>Estado civil<input name="estado_civil"></label>
     </div>
     <label class="hidden" id="respDef">Descrição da deficiência<textarea name="descricao_deficiencia" rows="3"></textarea></label>
-    <div class="section-heading"><span>02</span><div><h2>Filhos</h2><p>Informe a quantidade para gerar os blocos de cadastro.</p></div></div>
+    <label>Endereço completo / bairro / CEP<textarea name="endereco_completo" rows="2"></textarea></label>
+
+    <div class="section-heading"><span>02</span><div><h2>Condição familiar e renda</h2><p>Informações sociais do acolhimento PAC.</p></div></div>
+    <div class="form-grid two">
+      <label>Com quem você mora?<input name="com_quem_mora"></label>
+      <label>Atualmente você:<select name="situacao_trabalho"><option value="">Selecione</option><option>Trabalha registrada</option><option>Trabalha de forma autônoma/ informal</option><option>Está desempregada</option><option>É aposentada</option><option>Outros</option></select></label>
+      <label>Renda mensal aproximada<input name="renda_mensal"></label>
+      <label>Renda familiar aproximada<input name="renda_familiar"></label>
+      <label>Cadastro Único<input name="cadastro_unico"></label>
+      <label>Refeições por dia<select name="refeicoes_dia"><option value="">Selecione</option><option>1 refeição</option><option>2 refeições</option><option>3 refeições</option><option>Mais de 3 refeições</option><option>Não realizo refeições todos os dias</option></select></label>
+      <label>Moradia<select name="moradia"><option value="">Selecione</option><option>Própria</option><option>Alugada</option><option>Cedida</option></select></label>
+      <label>A residência possui água, luz e saneamento?<select name="saneamento_basico"><option value="">Selecione</option><option>Sim</option><option>Não</option></select></label>
+    </div>
+    <div class="extra-payments">
+      <strong>Benefícios recebidos</strong>
+      <label class="check"><input type="checkbox" name="beneficios" value="Bolsa família"> Bolsa família</label>
+      <label class="check"><input type="checkbox" name="beneficios" value="BPC"> BPC</label>
+      <label class="check"><input type="checkbox" name="beneficios" value="Auxílio gás"> Auxílio gás</label>
+      <label>Outros benefícios<input name="beneficios"></label>
+    </div>
+
+    <div class="section-heading"><span>03</span><div><h2>Saúde</h2><p>Dados importantes para direcionar o acolhimento.</p></div></div>
+    <div class="form-grid two">
+      <label>Possui problema de saúde? Qual?<textarea name="problema_saude" rows="3"></textarea></label>
+      <label>Faz uso contínuo de medicação? Qual?<textarea name="medicacao_continua" rows="3"></textarea></label>
+      <label>Acompanhamento psicológico ou psiquiátrico<select name="acompanhamento_psicologico"><option value="">Selecione</option><option>Sim</option><option>Não</option></select></label>
+      <label>Possui alergia?<input name="alergia"></label>
+      <label>Filho com problema de saúde/alergia<textarea name="filho_saude_alergia" rows="3"></textarea></label>
+      <label>Medicação contínua do filho<textarea name="filho_medicacao" rows="3"></textarea></label>
+    </div>
+
+    <div class="section-heading"><span>04</span><div><h2>Apoio PAC</h2><p>Interesses, dificuldades e contribuições possíveis.</p></div></div>
+    <div class="extra-payments">
+      <strong>Tipo de apoio de maior interesse</strong>
+      <label class="check"><input type="checkbox" name="apoio_interesse" value="Cursos e oficinas que ensinem a gerar renda"> Cursos e oficinas que ensinem a gerar renda</label>
+      <label class="check"><input type="checkbox" name="apoio_interesse" value="Capacitação profissional"> Capacitação profissional</label>
+      <label class="check"><input type="checkbox" name="apoio_interesse" value="Apoio psicológico"> Apoio psicológico</label>
+      <label class="check"><input type="checkbox" name="apoio_interesse" value="Apoio jurídico"> Apoio jurídico</label>
+      <label class="check"><input type="checkbox" name="apoio_interesse" value="Apoio social"> Apoio social</label>
+      <label>Outro apoio<input name="apoio_interesse"></label>
+    </div>
+    <div class="form-grid two">
+      <label>Principais dificuldades ultimamente<textarea name="dificuldades" rows="3"></textarea></label>
+      <label>Pode ensinar/realizar alguma aula/oficina?<textarea name="pode_oficina" rows="3"></textarea></label>
+      <label>Informe seu RG e CPF<input name="rg_cpf"></label>
+      <label>Sugestão de tema ou atividade<textarea name="sugestao_pac" rows="3"></textarea></label>
+    </div>
+
+    <div class="section-heading"><span>05</span><div><h2>Filhos</h2><p>Informe a quantidade para gerar os blocos de cadastro.</p></div></div>
     <label class="small-input">Quantidade de filhos<input id="qtdFilhos" name="qtd_filhos" type="number" min="0" max="15" value="0"></label>
     <div id="filhosContainer" data-sexo='{{ sexo|tojson }}' data-etnias='{{ etnias|tojson }}'></div>
     <label class="check"><input type="checkbox" name="dados_compartilhamento" required> Concordo em compartilhar meus dados *</label>
     <div class="actions"><a class="btn secondary" href="{{ url_for('user.pac_menu') }}">Voltar</a><button class="btn" type="submit">Registrar cadastro</button></div>
   </form>
+
+  {% if assinatura_url %}
+  <div class="modal-backdrop" id="signatureModal">
+    <section class="modal-panel">
+      <h2>Termos gerados</h2>
+      <p>O cadastro foi salvo e o link de assinatura dos termos PAC já está disponível.</p>
+      <input id="signatureLink" value="{{ assinatura_url }}" readonly>
+      <div class="actions">
+        <button class="btn secondary" type="button" data-copy-target="signatureLink">Copiar link</button>
+        <a class="btn" href="{{ assinatura_url }}" target="_blank" rel="noopener">Preencher formulário agora</a>
+      </div>
+    </section>
+  </div>
+  {% endif %}
 </main>
 {% endblock %}

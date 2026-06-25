@@ -23,6 +23,7 @@ from services.financeiro_service import atualizar_status_comprovante, format_brl
 from services.faltas_service import listar_faltas
 from services.limpeza_service import listar_limpeza
 from services.pac_service import listar_criancas_pac, listar_filhos_por_responsavel, listar_pac_cadastros, listar_responsaveis_pac
+from services.assinatura_service import BATCHES, historico_assinaturas
 from services.portal_auth_service import atualizar_status_usuario_portal, listar_solicitacoes_portal
 from app.routes.helpers import admin_required, df_records, excel_response, normalize_file_path
 
@@ -116,7 +117,7 @@ def login():
             session["admin_logado"] = True
             session["admin"] = admin
             flash("Login realizado com sucesso.", "success")
-            return redirect(url_for("admin.pac"))
+            return redirect(url_for("admin.financeiro"))
         flash("Usuário ou senha inválidos.", "danger")
     return render_template("admin/login.html")
 
@@ -131,28 +132,13 @@ def logout():
 @bp.get("/")
 @admin_required
 def dashboard():
-    # A antiga visão executiva foi removida. A entrada do admin agora abre direto no PAC.
-    return redirect(url_for("admin.pac"))
+    return redirect(url_for("admin.financeiro"))
 
 
 @bp.get("/pac")
 @admin_required
 def pac():
-    cadastros = listar_pac_cadastros()
-    criancas = listar_criancas_pac()
-    responsaveis = listar_responsaveis_pac()
-    cpf = request.args.get("cpf")
-    filhos = listar_filhos_por_responsavel(cpf) if cpf else pd.DataFrame()
-    resumo = _pac_summary(cadastros, criancas)
-    return render_template(
-        "admin/pac.html",
-        cadastros=df_records(cadastros),
-        criancas=df_records(criancas),
-        responsaveis=df_records(responsaveis),
-        filhos=df_records(filhos),
-        selected_cpf=cpf,
-        resumo=resumo,
-    )
+    return redirect(url_for("admin_pac.login"))
 
 
 @bp.get("/pac/export/<kind>")
@@ -163,6 +149,20 @@ def pac_export(kind: str):
     if kind == "criancas":
         return excel_response(listar_criancas_pac(), "pac_criancas.xlsx")
     return excel_response(listar_pac_cadastros(), "pac_cadastros.xlsx")
+
+
+@bp.get("/assinaturas")
+@admin_required
+def assinaturas():
+    batch = request.args.get("batch") or None
+    if batch and batch not in BATCHES:
+        batch = None
+    return render_template(
+        "admin/assinaturas.html",
+        rows=historico_assinaturas(batch),
+        batches=BATCHES,
+        selected_batch=batch,
+    )
 
 
 @bp.route("/financeiro", methods=["GET", "POST"])

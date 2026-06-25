@@ -1,0 +1,15 @@
+<aside class="admin-sidebar">
+  <div class="admin-brand">
+    <img src="{{ url_for('static', filename='img/logo_cusle.png') }}" alt="CUSLE">
+    <div>
+      <strong>Admin PAC</strong>
+      <span>{{ session.get('admin_pac', {}).get('email', '') }}</span>
+    </div>
+  </div>
+  <nav>
+    <a href="{{ url_for('admin_pac.dashboard') }}">Dashboard PAC</a>
+    <a href="#assinaturas">Assinaturas PAC</a>
+  </nav>
+  <a class="logout" href="{{ url_for('user.home') }}">Portal usuário</a>
+  <a class="logout" href="{{ url_for('admin_pac.logout') }}">Sair</a>
+</aside>

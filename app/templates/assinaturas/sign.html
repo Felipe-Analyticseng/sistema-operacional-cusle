@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% set body_class = 'public-bg' %}
+{% block body %}
+<main class="public-container wide-form">
+  {% set title = batch.label %}{% set subtitle = 'Assinatura eletrônica de lote de documentos.' %}
+  {% include 'partials/user_header.html' %}
+
+  <section class="signature-layout">
+    <article class="form-card signature-preview">
+      <div class="section-heading"><span>01</span><div><h2>Documentos</h2><p>Visualização do lote antes da assinatura.</p></div></div>
+      <iframe class="pdf-frame" src="{{ preview_url }}" title="Lote de documentos"></iframe>
+    </article>
+
+    <aside class="form-card signature-side">
+      <div class="section-heading"><span>02</span><div><h2>Assinar</h2><p>Confirme os dados e assine o lote.</p></div></div>
+      <div class="detail-grid compact">
+        <div class="detail-item"><span>Nome</span><strong>{{ cadastro.nome }}</strong></div>
+        <div class="detail-item"><span>E-mail</span><strong>{{ cadastro.email or '-' }}</strong></div>
+        <div class="detail-item"><span>CPF</span><strong>{{ cadastro.cpf }}</strong></div>
+      </div>
+
+      <form method="post" action="{{ url_for('assinaturas.submit', token=token) }}" id="signatureForm">
+        <label>Nome para registro
+          <input name="typed_name" id="typedName" value="{{ cadastro.nome }}" required>
+        </label>
+        <div class="signature-box">
+          <canvas id="signatureCanvas" width="720" height="220"></canvas>
+        </div>
+        <input type="hidden" name="signature_data" id="signatureData">
+        <label class="check"><input type="checkbox" name="accept" value="1" required> Declaro que li e concordo em assinar eletronicamente este lote.</label>
+        <div class="actions">
+          <button class="btn secondary" type="button" id="redrawSignature">Atualizar assinatura</button>
+          <button class="btn" type="submit">Assinar lote</button>
+        </div>
+      </form>
+    </aside>
+  </section>
+</main>
+{% endblock %}

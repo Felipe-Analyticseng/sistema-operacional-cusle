@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% set body_class = 'admin-bg' %}
+{% block body %}
+{% include 'partials/admin_header.html' %}
+<main class="admin-main">
+  <div class="admin-title">
+    <p class="eyebrow">Via-Nativo integrado</p>
+    <h1>Assinaturas</h1>
+    <span>Histórico de envelopes dos lotes FILHES e PAC.</span>
+  </div>
+
+  <section class="filter-panel">
+    <form class="filter-form" method="get">
+      <label>Lote
+        <select name="batch">
+          <option value="">Todos</option>
+          {% for key, cfg in batches.items() %}
+          <option value="{{ key }}" {% if selected_batch == key %}selected{% endif %}>{{ cfg.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="btn small" type="submit">Filtrar</button>
+    </form>
+  </section>
+
+  <section class="table-panel">
+    <div class="table-head"><div><h2>Envelopes</h2><p>Uma linha por lote enviado ou assinado.</p></div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th>Lote</th><th>Nome</th><th>E-mail</th><th>CPF</th><th>Status</th><th>Criado em</th><th>Assinado em</th><th>Link</th><th>Arquivo</th></tr></thead>
+        <tbody>
+          {% for it in rows %}
+          <tr>
+            <td>#{{ it.id }}</td><td>{{ it.batch_label }}</td><td>{{ it.nome }}</td><td>{{ it.email }}</td><td>{{ it.cpf }}</td>
+            <td><span class="badge">{{ 'Assinado' if it.status == 'signed' else 'Enviado' }}</span></td>
+            <td>{{ it.created_at|datetimebr }}</td><td>{{ it.signed_at|datetimebr }}</td>
+            <td><a class="link-btn" href="{{ it.sign_url }}" target="_blank" rel="noopener">Abrir</a></td>
+            <td>{% if it.signed_pdf_path %}<a class="link-btn" href="{{ url_for('assinaturas.download_signed', path=it.signed_pdf_path) }}" target="_blank" rel="noopener">PDF</a>{% else %}-{% endif %}</td>
+          </tr>
+          {% else %}<tr><td colspan="10">Nenhuma assinatura encontrada.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+{% endblock %}

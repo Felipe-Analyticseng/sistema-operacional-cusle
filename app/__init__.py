@@ -14,10 +14,14 @@ def create_app() -> Flask:
     from app.routes.user import bp as user_bp
     from app.routes.admin import bp as admin_bp
     from app.routes.api import bp as api_bp
+    from app.routes.assinaturas import bp as assinaturas_bp
+    from app.routes.admin_pac import bp as admin_pac_bp
 
     app.register_blueprint(user_bp)
     app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(admin_pac_bp, url_prefix="/admin-pac")
     app.register_blueprint(api_bp, url_prefix="/api")
+    app.register_blueprint(assinaturas_bp)
 
     @app.template_filter("brl")
     def brl(value):

@@ -6,7 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from db.database import execute_command, execute_returning, fetch_one, run_query
 from services.cadastro_service import buscar_cadastro_por_cpf, buscar_cadastro_por_email, only_digits
-from core.auth import autenticar_admin
+from core.auth import autenticar_admin, autenticar_admin_pac
 
 APPROVED = "aprovado"
 PENDING = "pendente"
@@ -179,6 +179,18 @@ def autenticar_usuario_portal(email: str, senha: str) -> dict | None:
     admin = autenticar_admin(email_limpo, senha)
     if admin:
         return {"id": None, "nome": admin["nome"], "email": admin["email"], "cpf": None, "perfil": "admin", "is_admin": True}
+
+    admin_pac = autenticar_admin_pac(email_limpo, senha)
+    if admin_pac:
+        return {
+            "id": None,
+            "nome": admin_pac["nome"],
+            "email": admin_pac["email"],
+            "cpf": None,
+            "perfil": "admin_pac",
+            "is_admin": False,
+            "is_admin_pac": True,
+        }
 
     row = fetch_one(
         """

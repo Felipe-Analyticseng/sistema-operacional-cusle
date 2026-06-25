@@ -22,6 +22,7 @@ from services.pac_service import (
     listar_filhes_santo_apadrinhamento,
     registrar_apadrinhamento_pac,
 )
+from services.assinatura_service import criar_ou_obter_envelope
 from services.cadastro_service import buscar_cadastro_por_cpf, buscar_cadastro_por_email
 from services.portal_auth_service import (
     autenticar_usuario_portal,
@@ -135,6 +136,14 @@ def landing():
 @bp.get("/portal")
 @portal_required
 def home():
+    usuario = _portal_user()
+    if usuario.get("is_admin_pac"):
+        cards = [
+            {"title": "PAC - Programa Acolhe CUSLE", "desc": "Cadastro assistido, apadrinhamento e contribuição.", "url": url_for("user.pac_menu")},
+            {"title": "Admin PAC", "desc": "Painel administrativo exclusivo do PAC.", "url": url_for("admin_pac.dashboard")},
+        ]
+        return render_template("user/home.html", title="Portal CUSLE", subtitle=None, cards=cards, is_home=True)
+
     cards = [
         {"title": "Filho de Santo", "desc": "Mensalidade, limpeza e justificativas.", "url": url_for("user.filho_santo")},
         {"title": "PAC - Programa Acolhe CUSLE", "desc": "Cadastro assistido, apadrinhamento e contribuição.", "url": url_for("user.pac_menu")},
@@ -152,6 +161,12 @@ def portal_login():
         if usuario:
             session["portal_logado"] = True
             session["portal_user"] = usuario
+            if usuario.get("is_admin"):
+                session["admin_logado"] = True
+                session["admin"] = {"nome": usuario.get("nome"), "email": usuario.get("email")}
+            if usuario.get("is_admin_pac"):
+                session["admin_pac_logado"] = True
+                session["admin_pac"] = {"nome": usuario.get("nome"), "email": usuario.get("email"), "role": "admin_pac"}
             flash("Login realizado com sucesso.", "success")
             return redirect(url_for("user.home"))
 
@@ -316,11 +331,13 @@ def pac_menu():
 
 @bp.route("/pac/cadastro", methods=["GET", "POST"])
 def pac_cadastro():
+    assinatura_url = None
     if request.method == "POST":
         try:
             qtd_filhos = int(request.form.get("qtd_filhos") or 0)
             responsavel = {
                 "nome": request.form.get("nome"),
+                "nome_social": request.form.get("nome_social"),
                 "cpf": request.form.get("cpf"),
                 "email": request.form.get("email"),
                 "telefone": request.form.get("telefone"),
@@ -330,6 +347,28 @@ def pac_cadastro():
                 "possui_deficiencia": request.form.get("possui_deficiencia") == "Sim",
                 "descricao_deficiencia": request.form.get("descricao_deficiencia"),
                 "dados_compartilhamento": request.form.get("dados_compartilhamento") == "on",
+                "endereco_completo": request.form.get("endereco_completo"),
+                "estado_civil": request.form.get("estado_civil"),
+                "com_quem_mora": request.form.get("com_quem_mora"),
+                "situacao_trabalho": request.form.get("situacao_trabalho"),
+                "renda_mensal": request.form.get("renda_mensal"),
+                "renda_familiar": request.form.get("renda_familiar"),
+                "cadastro_unico": request.form.get("cadastro_unico"),
+                "beneficios": ", ".join(request.form.getlist("beneficios")),
+                "problema_saude": request.form.get("problema_saude"),
+                "medicacao_continua": request.form.get("medicacao_continua"),
+                "acompanhamento_psicologico": request.form.get("acompanhamento_psicologico"),
+                "alergia": request.form.get("alergia"),
+                "filho_saude_alergia": request.form.get("filho_saude_alergia"),
+                "filho_medicacao": request.form.get("filho_medicacao"),
+                "refeicoes_dia": request.form.get("refeicoes_dia"),
+                "moradia": request.form.get("moradia"),
+                "saneamento_basico": request.form.get("saneamento_basico"),
+                "apoio_interesse": ", ".join(request.form.getlist("apoio_interesse")),
+                "dificuldades": request.form.get("dificuldades"),
+                "pode_oficina": request.form.get("pode_oficina"),
+                "rg_cpf": request.form.get("rg_cpf"),
+                "sugestao_pac": request.form.get("sugestao_pac"),
             }
             filhos = []
             for i in range(qtd_filhos):
@@ -341,13 +380,17 @@ def pac_cadastro():
                     "etnia": request.form.get(f"filho_etnia_{i}"),
                     "possui_deficiencia": request.form.get(f"filho_possui_deficiencia_{i}") == "Sim",
                     "descricao_deficiencia": request.form.get(f"filho_descricao_deficiencia_{i}"),
+                    "problema_saude": request.form.get(f"filho_problema_saude_{i}"),
+                    "alergia": request.form.get(f"filho_alergia_{i}"),
+                    "medicacao_continua": request.form.get(f"filho_medicacao_continua_{i}"),
                 })
-            cadastrar_familia_pac(responsavel=responsavel, filhos=filhos)
+            resultado = cadastrar_familia_pac(responsavel=responsavel, filhos=filhos)
+            envelope = criar_ou_obter_envelope("pac_batch", int(resultado["responsavel"]["cadastro"]["id"]))
+            assinatura_url = envelope.get("sign_url")
             flash("Cadastro PAC realizado com sucesso.", "success")
-            return redirect(url_for("user.pac_cadastro"))
         except Exception as exc:
             flash(str(exc), "danger")
-    return render_template("user/pac_cadastro.html", sexo=SEXO, etnias=ETNIAS)
+    return render_template("user/pac_cadastro.html", sexo=SEXO, etnias=ETNIAS, assinatura_url=assinatura_url)
 
 
 @bp.route("/pac/apadrinhamento", methods=["GET", "POST"])

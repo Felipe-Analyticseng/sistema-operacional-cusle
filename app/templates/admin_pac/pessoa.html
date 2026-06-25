@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% set body_class = 'admin-bg' %}
+{% block body %}
+{% include 'partials/admin_pac_header.html' %}
+<main class="admin-main">
+  <div class="admin-title">
+    <p class="eyebrow">Registro PAC</p>
+    <h1>{{ pessoa.nome }}</h1>
+    <span>Cadastro completo da pessoa no Programa Acolhe CUSLE.</span>
+  </div>
+
+  <section class="profile-layout">
+    <article class="profile-photo-panel">
+      {% if pessoa.foto_path %}
+        <img class="profile-photo" src="{{ url_for('admin_pac.foto', cadastro_id=pessoa.id) }}" alt="Foto de {{ pessoa.nome }}">
+      {% else %}
+        <div class="guest-avatar" aria-label="Sem foto"><span></span></div>
+      {% endif %}
+      <form method="post" action="{{ url_for('admin_pac.pessoa_foto', cadastro_id=pessoa.id) }}" enctype="multipart/form-data">
+        <label>Anexar foto<input type="file" name="foto" accept="image/png,image/jpeg,image/webp" required></label>
+        <button class="btn small" type="submit">Anexar foto</button>
+      </form>
+    </article>
+
+    <article class="table-panel profile-data-panel">
+      <div class="table-head">
+        <div><h2>Dados cadastrais</h2><p>Campos sincronizados do formulário PAC interno.</p></div>
+        <a class="btn secondary small" href="{{ url_for('admin_pac.dashboard') }}">Voltar</a>
+      </div>
+      <div class="detail-grid">
+        {% for label, key in [
+          ('Nome completo', 'nome'), ('Nome social', 'nome_social'), ('CPF/RG', 'cpf'), ('E-mail', 'email'),
+          ('Telefone', 'telefone'), ('Data de nascimento', 'data_nascimento'), ('Idade', 'idade'), ('Sexo', 'sexo'),
+          ('Etnia', 'etnia'), ('Responsável', 'responsavel_nome'), ('CPF responsável', 'responsavel_cpf'),
+          ('Endereço completo', 'endereco_completo'), ('Estado civil', 'estado_civil'), ('Com quem mora', 'com_quem_mora'),
+          ('Situação de trabalho', 'situacao_trabalho'), ('Renda mensal', 'renda_mensal'), ('Renda familiar', 'renda_familiar'),
+          ('Cadastro Único', 'cadastro_unico'), ('Benefícios', 'beneficios'), ('Problema de saúde', 'problema_saude'),
+          ('Medicação contínua', 'medicacao_continua'), ('Acompanhamento psicológico/psiquiátrico', 'acompanhamento_psicologico'),
+          ('Alergia', 'alergia'), ('Possui deficiência', 'possui_deficiencia'), ('Descrição deficiência', 'descricao_deficiencia'),
+          ('Filho com saúde/alergia', 'filho_saude_alergia'), ('Medicação do filho', 'filho_medicacao'),
+          ('Refeições por dia', 'refeicoes_dia'), ('Moradia', 'moradia'), ('Água, luz e saneamento', 'saneamento_basico'),
+          ('Apoio de interesse', 'apoio_interesse'), ('Dificuldades', 'dificuldades'), ('Pode oferecer oficina', 'pode_oficina'),
+          ('RG e CPF informado', 'rg_cpf'), ('Sugestão PAC', 'sugestao_pac')
+        ] %}
+          <div class="detail-item"><span>{{ label }}</span><strong>{{ pessoa.get(key) if pessoa.get(key) not in [None, ''] else '-' }}</strong></div>
+        {% endfor %}
+      </div>
+    </article>
+  </section>
+</main>
+{% endblock %}
