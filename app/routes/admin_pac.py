@@ -9,9 +9,12 @@ from config.settings import BASE_DIR
 from core.auth import autenticar_admin_pac
 from db.database import execute_returning, fetch_one
 from services.assinatura_service import historico_assinaturas
+from services.cursos_service import listar_cursos_pac_com_inscritos, listar_inscritos_curso_pac
 from services.pac_service import (
+    PAC_EDIT_FIELDS,
+    atualizar_cadastro_pac_admin,
+    excluir_cadastro_pac_admin,
     listar_criancas_pac,
-    listar_filhos_por_responsavel,
     listar_pac_cadastros,
     listar_responsaveis_pac,
 )
@@ -47,19 +50,39 @@ def logout():
 def dashboard():
     cadastros = listar_pac_cadastros()
     criancas = listar_criancas_pac()
-    responsaveis = listar_responsaveis_pac()
-    cpf = request.args.get("cpf")
-    filhos = listar_filhos_por_responsavel(cpf) if cpf else None
     return render_template(
         "admin_pac/dashboard.html",
         cadastros=df_records(cadastros),
         criancas=df_records(criancas),
-        responsaveis=df_records(responsaveis),
-        filhos=df_records(filhos),
-        selected_cpf=cpf,
         resumo=_pac_summary(cadastros, criancas),
-        assinaturas=historico_assinaturas("pac_batch"),
     )
+
+
+@bp.get("/assinaturas")
+@admin_pac_required
+def assinaturas():
+    status = (request.args.get("status") or "").strip()
+    assinaturas = historico_assinaturas("pac_batch")
+    if status:
+        assinaturas = [item for item in assinaturas if item.get("status") == status]
+    return render_template(
+        "admin_pac/assinaturas.html",
+        assinaturas=assinaturas,
+        selected_status=status,
+    )
+
+
+@bp.get("/cursos")
+@admin_pac_required
+def cursos():
+    return render_template("admin_pac/cursos.html", cursos=listar_cursos_pac_com_inscritos())
+
+
+@bp.get("/cursos/<curso_key>/export")
+@admin_pac_required
+def cursos_export(curso_key: str):
+    filename = f"pac_curso_{curso_key.lower()}.xlsx"
+    return excel_response(listar_inscritos_curso_pac(curso_key), filename)
 
 
 @bp.get("/pessoa/<int:cadastro_id>")
@@ -69,7 +92,36 @@ def pessoa(cadastro_id: int):
     if not pessoa:
         flash("Pessoa PAC não encontrada.", "danger")
         return redirect(url_for("admin_pac.dashboard"))
-    return render_template("admin_pac/pessoa.html", pessoa=pessoa)
+    return render_template("admin_pac/pessoa.html", pessoa=pessoa, edit_fields=PAC_EDIT_FIELDS)
+
+
+@bp.post("/pessoa/<int:cadastro_id>")
+@admin_pac_required
+def pessoa_update(cadastro_id: int):
+    try:
+        atualizado = atualizar_cadastro_pac_admin(cadastro_id, request.form)
+        if not atualizado:
+            flash("Pessoa PAC nao encontrada.", "danger")
+            return redirect(url_for("admin_pac.dashboard"))
+        flash("Alteracoes salvas com sucesso.", "success")
+    except Exception as exc:
+        flash(str(exc), "danger")
+    return redirect(url_for("admin_pac.pessoa", cadastro_id=cadastro_id))
+
+
+@bp.post("/pessoa/<int:cadastro_id>/excluir")
+@admin_pac_required
+def pessoa_delete(cadastro_id: int):
+    try:
+        excluido = excluir_cadastro_pac_admin(cadastro_id)
+        if not excluido:
+            flash("Pessoa PAC nao encontrada.", "danger")
+            return redirect(url_for("admin_pac.dashboard"))
+        flash(f"Cadastro PAC de {excluido.get('nome')} excluido com sucesso.", "success")
+    except Exception as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("admin_pac.pessoa", cadastro_id=cadastro_id))
+    return redirect(url_for("admin_pac.dashboard"))
 
 
 @bp.post("/pessoa/<int:cadastro_id>/foto")

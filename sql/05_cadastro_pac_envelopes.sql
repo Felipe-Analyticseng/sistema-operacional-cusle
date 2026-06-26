@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS cadastro.envelopes (
     token VARCHAR(200) NOT NULL UNIQUE,
     status VARCHAR(20) NOT NULL DEFAULT 'sent',
     signed_pdf_path TEXT,
+    signed_pdf_data BYTEA,
+    signed_by_name TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     signed_at TIMESTAMP WITH TIME ZONE
 );

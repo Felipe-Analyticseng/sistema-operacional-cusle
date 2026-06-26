@@ -218,6 +218,79 @@ def catalogo_para_ui() -> dict[str, list[dict]]:
     return catalog_for_ui
 
 
+def listar_cursos_pac_com_inscritos() -> list[dict]:
+    ensure_cursos_tables()
+    courses = sort_courses_keep_upi_first(COURSE_CATALOG["pac"])
+    rows = run_query(
+        """
+        SELECT
+            cc.id AS inscricao_id,
+            cc.curso_key,
+            cc.curso_nome,
+            cc.data_turma,
+            cc.vagas_limite,
+            cc.created_at,
+            c.id AS cadastro_id,
+            c.nome,
+            c.cpf,
+            c.email,
+            c.telefone,
+            c.data_nascimento,
+            c.perfil
+        FROM cadastro.cadastro_curso cc
+        JOIN cadastro.cadastro c ON c.id = cc.cadastro_id
+        WHERE LOWER(COALESCE(c.perfil, '')) = 'pac'
+        ORDER BY cc.data_turma ASC NULLS LAST, cc.curso_nome ASC, c.nome ASC;
+        """
+    )
+    if not rows.empty:
+        rows = rows.where(rows.notna(), None)
+
+    result = []
+    for course in courses:
+        key = course["curso_key"]
+        if rows.empty:
+            inscritos = []
+        else:
+            inscritos = rows[rows["curso_key"] == key].to_dict(orient="records")
+        limite = course.get("limite")
+        result.append(
+            {
+                "curso_key": key,
+                "nome": course["nome"],
+                "data": course.get("data"),
+                "limite": limite,
+                "total": len(inscritos),
+                "vagas_restantes": None if limite is None else max(limite - len(inscritos), 0),
+                "inscritos": inscritos,
+            }
+        )
+    return result
+
+
+def listar_inscritos_curso_pac(curso_key: str):
+    ensure_cursos_tables()
+    return run_query(
+        """
+        SELECT
+            c.nome,
+            c.cpf,
+            c.email,
+            c.telefone,
+            c.data_nascimento,
+            cc.curso_nome,
+            cc.data_turma,
+            cc.created_at AS inscrito_em
+        FROM cadastro.cadastro_curso cc
+        JOIN cadastro.cadastro c ON c.id = cc.cadastro_id
+        WHERE cc.curso_key = :curso_key
+          AND LOWER(COALESCE(c.perfil, '')) = 'pac'
+        ORDER BY c.nome ASC;
+        """,
+        {"curso_key": curso_key},
+    )
+
+
 def listar_inscricoes_cadastro(cadastro_id: int) -> list[dict]:
     ensure_cursos_tables()
     df = run_query(

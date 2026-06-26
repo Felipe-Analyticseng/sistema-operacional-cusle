@@ -8,7 +8,7 @@ import unicodedata
 
 import pandas as pd
 
-from db.database import execute_returning, run_query
+from db.database import execute_command, execute_returning, run_query
 from services.cadastro_service import only_digits, salvar_ou_vincular_cadastro_pac
 
 
@@ -174,8 +174,6 @@ def _normalizar_texto(value: str | None) -> str:
 
 def garantir_estrutura_pac() -> None:
     """Cria/ajusta estruturas PAC sem quebrar cadastro.cadastro."""
-    from db.database import execute_command
-
     execute_command("CREATE SCHEMA IF NOT EXISTS atendimento;")
     execute_command("CREATE SCHEMA IF NOT EXISTS cadastro;")
 
@@ -300,7 +298,258 @@ def garantir_estrutura_pac() -> None:
         """
     )
 
+    migrar_legado_cadastro_para_pac()
     sincronizar_pac_criancas()
+
+
+PAC_EDIT_FIELDS = [
+    "nome",
+    "nome_social",
+    "cpf",
+    "email",
+    "telefone",
+    "data_nascimento",
+    "sexo",
+    "etnia",
+    "responsavel_nome",
+    "responsavel_cpf",
+    "endereco_completo",
+    "estado_civil",
+    "com_quem_mora",
+    "situacao_trabalho",
+    "renda_mensal",
+    "renda_familiar",
+    "cadastro_unico",
+    "beneficios",
+    "problema_saude",
+    "medicacao_continua",
+    "acompanhamento_psicologico",
+    "alergia",
+    "possui_deficiencia",
+    "descricao_deficiencia",
+    "filho_saude_alergia",
+    "filho_medicacao",
+    "refeicoes_dia",
+    "moradia",
+    "saneamento_basico",
+    "apoio_interesse",
+    "dificuldades",
+    "pode_oficina",
+    "rg_cpf",
+    "sugestao_pac",
+]
+
+
+def migrar_legado_cadastro_para_pac() -> None:
+    """Replica pessoas PAC legadas de cadastro.cadastro para cadastro.cadastro_pac."""
+    execute_command(
+        """
+        WITH legado AS (
+            SELECT DISTINCT ON (regexp_replace(COALESCE(c.cpf, ''), '[^0-9]', '', 'g'))
+                c.*
+            FROM cadastro.cadastro c
+            WHERE LOWER(COALESCE(c.perfil, '')) = 'pac'
+              AND NULLIF(TRIM(COALESCE(c.nome, '')), '') IS NOT NULL
+              AND NULLIF(regexp_replace(COALESCE(c.cpf, ''), '[^0-9]', '', 'g'), '') IS NOT NULL
+            ORDER BY regexp_replace(COALESCE(c.cpf, ''), '[^0-9]', '', 'g'), c.id DESC
+        )
+        INSERT INTO cadastro.cadastro_pac
+        (
+            nome, cpf, email, telefone, perfil, participa_curso,
+            data_nascimento, idade, menor_idade, responsavel_nome, responsavel_cpf,
+            dados_compartilhamento
+        )
+        SELECT
+            TRIM(c.nome) AS nome,
+            regexp_replace(COALESCE(c.cpf, ''), '[^0-9]', '', 'g') AS cpf,
+            NULLIF(LOWER(TRIM(COALESCE(c.email, ''))), '') AS email,
+            NULLIF(regexp_replace(COALESCE(c.telefone, ''), '[^0-9]', '', 'g'), '') AS telefone,
+            'pac' AS perfil,
+            COALESCE(c.participa_curso, false) AS participa_curso,
+            c.data_nascimento,
+            CASE
+                WHEN c.data_nascimento IS NULL THEN NULL
+                ELSE DATE_PART('year', AGE(CURRENT_DATE, c.data_nascimento))::INT
+            END AS idade,
+            CASE
+                WHEN c.menor_idade IS NOT NULL THEN c.menor_idade
+                WHEN c.data_nascimento IS NULL THEN NULL
+                ELSE DATE_PART('year', AGE(CURRENT_DATE, c.data_nascimento))::INT < 18
+            END AS menor_idade,
+            NULLIF(TRIM(COALESCE(c.responsavel_nome, '')), '') AS responsavel_nome,
+            NULLIF(regexp_replace(COALESCE(c.responsavel_cpf, ''), '[^0-9]', '', 'g'), '') AS responsavel_cpf,
+            false AS dados_compartilhamento
+        FROM legado c
+        WHERE 1 = 1
+          AND NOT EXISTS (
+              SELECT 1
+              FROM cadastro.cadastro_pac cp
+              WHERE regexp_replace(COALESCE(cp.cpf, ''), '[^0-9]', '', 'g')
+                    = regexp_replace(COALESCE(c.cpf, ''), '[^0-9]', '', 'g')
+          );
+        """
+    )
+
+    execute_command(
+        """
+        UPDATE cadastro.cadastro_pac cp
+        SET
+            nome = COALESCE(NULLIF(TRIM(cp.nome), ''), NULLIF(TRIM(c.nome), '')),
+            email = COALESCE(NULLIF(TRIM(cp.email), ''), NULLIF(LOWER(TRIM(COALESCE(c.email, ''))), '')),
+            telefone = COALESCE(NULLIF(TRIM(cp.telefone), ''), NULLIF(regexp_replace(COALESCE(c.telefone, ''), '[^0-9]', '', 'g'), '')),
+            data_nascimento = COALESCE(cp.data_nascimento, c.data_nascimento),
+            idade = CASE
+                WHEN cp.idade IS NOT NULL THEN cp.idade
+                WHEN c.data_nascimento IS NULL THEN NULL
+                ELSE DATE_PART('year', AGE(CURRENT_DATE, c.data_nascimento))::INT
+            END,
+            menor_idade = COALESCE(
+                cp.menor_idade,
+                c.menor_idade,
+                CASE
+                    WHEN c.data_nascimento IS NULL THEN NULL
+                    ELSE DATE_PART('year', AGE(CURRENT_DATE, c.data_nascimento))::INT < 18
+                END
+            ),
+            responsavel_nome = COALESCE(NULLIF(TRIM(cp.responsavel_nome), ''), NULLIF(TRIM(COALESCE(c.responsavel_nome, '')), '')),
+            responsavel_cpf = COALESCE(NULLIF(TRIM(cp.responsavel_cpf), ''), NULLIF(regexp_replace(COALESCE(c.responsavel_cpf, ''), '[^0-9]', '', 'g'), '')),
+            participa_curso = COALESCE(cp.participa_curso, c.participa_curso, false),
+            perfil = 'pac',
+            updated_at = NOW()
+        FROM cadastro.cadastro c
+        WHERE LOWER(COALESCE(c.perfil, '')) = 'pac'
+          AND regexp_replace(COALESCE(cp.cpf, ''), '[^0-9]', '', 'g')
+              = regexp_replace(COALESCE(c.cpf, ''), '[^0-9]', '', 'g');
+        """
+    )
+
+
+def atualizar_cadastro_pac_admin(cadastro_id: int, form) -> dict | None:
+    garantir_estrutura_pac()
+
+    data_nascimento = (form.get("data_nascimento") or "").strip() or None
+    data_nascimento_date = _normalizar_data(data_nascimento) if data_nascimento else None
+    idade = calcular_idade(data_nascimento_date) if data_nascimento_date else None
+    menor_idade = bool(idade is not None and idade < 18) if idade is not None else None
+
+    params = {
+        "id": cadastro_id,
+        "nome": (form.get("nome") or "").strip(),
+        "nome_social": (form.get("nome_social") or "").strip() or None,
+        "cpf": only_digits(form.get("cpf")),
+        "email": (form.get("email") or "").strip().lower() or None,
+        "telefone": only_digits(form.get("telefone")),
+        "data_nascimento": data_nascimento_date,
+        "idade": idade,
+        "menor_idade": menor_idade,
+        "sexo": (form.get("sexo") or "").strip() or None,
+        "etnia": (form.get("etnia") or "").strip() or None,
+        "responsavel_nome": (form.get("responsavel_nome") or "").strip() or None,
+        "responsavel_cpf": only_digits(form.get("responsavel_cpf")),
+        "possui_deficiencia": form.get("possui_deficiencia") == "1",
+    }
+    for field in PAC_EDIT_FIELDS:
+        if field not in params and field != "possui_deficiencia":
+            params[field] = (form.get(field) or "").strip() or None
+
+    if not params["nome"]:
+        raise ValueError("Nome completo e obrigatorio.")
+    if not params["cpf"]:
+        raise ValueError("CPF e obrigatorio.")
+
+    return execute_returning(
+        """
+        UPDATE cadastro.cadastro_pac
+        SET
+            nome = :nome,
+            nome_social = :nome_social,
+            cpf = :cpf,
+            email = :email,
+            telefone = :telefone,
+            data_nascimento = :data_nascimento,
+            idade = :idade,
+            menor_idade = :menor_idade,
+            sexo = :sexo,
+            etnia = :etnia,
+            responsavel_nome = :responsavel_nome,
+            responsavel_cpf = :responsavel_cpf,
+            endereco_completo = :endereco_completo,
+            estado_civil = :estado_civil,
+            com_quem_mora = :com_quem_mora,
+            situacao_trabalho = :situacao_trabalho,
+            renda_mensal = :renda_mensal,
+            renda_familiar = :renda_familiar,
+            cadastro_unico = :cadastro_unico,
+            beneficios = :beneficios,
+            problema_saude = :problema_saude,
+            medicacao_continua = :medicacao_continua,
+            acompanhamento_psicologico = :acompanhamento_psicologico,
+            alergia = :alergia,
+            possui_deficiencia = :possui_deficiencia,
+            descricao_deficiencia = :descricao_deficiencia,
+            filho_saude_alergia = :filho_saude_alergia,
+            filho_medicacao = :filho_medicacao,
+            refeicoes_dia = :refeicoes_dia,
+            moradia = :moradia,
+            saneamento_basico = :saneamento_basico,
+            apoio_interesse = :apoio_interesse,
+            dificuldades = :dificuldades,
+            pode_oficina = :pode_oficina,
+            rg_cpf = :rg_cpf,
+            sugestao_pac = :sugestao_pac,
+            perfil = 'pac',
+            updated_at = NOW()
+        WHERE id = :id
+        RETURNING *;
+        """,
+        params,
+    )
+
+
+def excluir_cadastro_pac_admin(cadastro_id: int) -> dict | None:
+    garantir_estrutura_pac()
+    cadastro = execute_returning(
+        """
+        DELETE FROM cadastro.cadastro_pac
+        WHERE id = :id
+        RETURNING id, nome, cpf;
+        """,
+        {"id": cadastro_id},
+    )
+    if not cadastro:
+        return None
+
+    cpf = only_digits(cadastro.get("cpf"))
+    if cpf:
+        execute_command(
+            """
+            DELETE FROM cadastro._pac_criancas
+            WHERE regexp_replace(COALESCE(crianca_cpf, ''), '[^0-9]', '', 'g') = :cpf;
+            """,
+            {"cpf": cpf},
+        )
+        execute_command(
+            """
+            UPDATE cadastro.cadastro_pac
+            SET responsavel_nome = NULL,
+                responsavel_cpf = NULL,
+                updated_at = NOW()
+            WHERE regexp_replace(COALESCE(responsavel_cpf, ''), '[^0-9]', '', 'g') = :cpf;
+            """,
+            {"cpf": cpf},
+        )
+
+    execute_command(
+        """
+        UPDATE atendimento.pac_solicitacoes
+        SET cadastro_id = NULL,
+            updated_at = NOW()
+        WHERE cadastro_id = :id;
+        """,
+        {"id": cadastro_id},
+    )
+    sincronizar_pac_criancas()
+    return cadastro
 
 
 def sincronizar_pac_criancas() -> None:
