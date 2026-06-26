@@ -6,14 +6,14 @@
   <div class="admin-title">
     <p class="eyebrow">Programa Acolhe CUSLE</p>
     <h1>Admin PAC</h1>
-    <span>Acompanhamento de cadastro, família, apadrinhamento e termos PAC.</span>
+    <span>Visao rapida dos indicadores e integrantes do Programa Acolhe CUSLE.</span>
   </div>
 
   <section class="kpi-grid four">
-    <div class="kpi"><span>Pessoas PAC</span><strong>{{ resumo.pessoas }}</strong><small>Base cadastro.cadastro_pac</small></div>
-    <div class="kpi"><span>Menores PAC</span><strong>{{ resumo.menores }}</strong><small>Assinatura pelo responsável</small></div>
-    <div class="kpi"><span>Apadrinhados</span><strong>{{ resumo.apadrinhados }}</strong><small>Crianças com padrinho</small></div>
-    <div class="kpi"><span>Sem padrinho</span><strong>{{ resumo.nao_apadrinhados }}</strong><small>Crianças disponíveis</small></div>
+    <div class="kpi"><span>Pessoas PAC</span><strong>{{ resumo.pessoas }}</strong></div>
+    <div class="kpi"><span>Menores PAC</span><strong>{{ resumo.menores }}</strong></div>
+    <div class="kpi"><span>Apadrinhados</span><strong>{{ resumo.apadrinhados }}</strong></div>
+    <div class="kpi"><span>Sem padrinho</span><strong>{{ resumo.nao_apadrinhados }}</strong></div>
   </section>
 
   <section class="table-panel">
@@ -23,70 +23,14 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>E-mail</th><th>Idade</th><th>Responsável</th><th>Ação</th></tr></thead>
+        <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Idade</th><th>Responsavel</th><th>Acao</th></tr></thead>
         <tbody>
           {% for c in cadastros %}
           <tr>
-            <td>{{ c.nome }}</td><td>{{ c.cpf }}</td><td>{{ c.telefone }}</td><td>{{ c.email }}</td><td>{{ c.idade }}</td><td>{{ c.responsavel_nome or '-' }}</td>
+            <td>{{ c.nome }}</td><td>{{ c.telefone or '-' }}</td><td>{{ c.email }}</td><td>{{ c.idade }}</td><td>{{ c.responsavel_nome or '-' }}</td>
             <td><a class="link-btn" href="{{ url_for('admin_pac.pessoa', cadastro_id=c.id) }}">Abrir</a></td>
           </tr>
-          {% else %}<tr><td colspan="7">Nenhum cadastro PAC encontrado.</td></tr>{% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="table-panel">
-    <div class="table-head">
-      <div><h2>Mães responsáveis</h2><p>Clique em árvore para visualizar os filhos vinculados.</p></div>
-      <a class="btn small" href="{{ url_for('admin_pac.export', kind='responsaveis') }}">Baixar Excel</a>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>E-mail</th><th>Idade</th><th>Filhos</th><th>Ação</th></tr></thead>
-        <tbody>
-          {% for r in responsaveis %}
-          <tr>
-            <td>{{ r.nome }}</td><td>{{ r.cpf }}</td><td>{{ r.telefone }}</td><td>{{ r.email }}</td><td>{{ r.idade }}</td><td>{{ r.quantidade_filhos }}</td>
-            <td><a class="link-btn" href="{{ url_for('admin_pac.dashboard', cpf=r.cpf) }}">Árvore</a></td>
-          </tr>
-          {% else %}<tr><td colspan="7">Nenhuma mãe responsável encontrada.</td></tr>{% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  {% if selected_cpf %}
-  <section class="table-panel accent-panel">
-    <div class="table-head">
-      <div><h2>Árvore familiar</h2><p>CPF responsável: {{ selected_cpf }}</p></div>
-      <a class="btn secondary small" href="{{ url_for('admin_pac.dashboard') }}">Fechar árvore</a>
-    </div>
-    <div class="family-tree">
-      {% for f in filhos %}
-      <div class="child-node"><strong>{{ f.nome }}</strong><span>{{ f.idade }} anos · {{ f.sexo }}</span><small>{{ f.apadrinhamento }}{% if f.padrinho_nome %} · {{ f.padrinho_nome }}{% endif %}</small></div>
-      {% else %}<p>Nenhum filho encontrado para esta responsável.</p>{% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
-  <section class="table-panel" id="assinaturas">
-    <div class="table-head">
-      <div><h2>Assinaturas PAC</h2><p>Histórico de envelopes do lote PAC, seguindo a estrutura do Via-Nativo.</p></div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>ID</th><th>Nome</th><th>CPF</th><th>Status</th><th>Criado em</th><th>Assinado em</th><th>Link</th><th>Arquivo</th></tr></thead>
-        <tbody>
-          {% for it in assinaturas %}
-          <tr>
-            <td>#{{ it.id }}</td><td>{{ it.nome }}</td><td>{{ it.cpf }}</td>
-            <td><span class="badge">{{ 'Assinado' if it.status == 'signed' else 'Enviado' }}</span></td>
-            <td>{{ it.created_at|datetimebr }}</td><td>{{ it.signed_at|datetimebr }}</td>
-            <td><a class="link-btn" href="{{ it.sign_url }}" target="_blank" rel="noopener">Abrir</a></td>
-            <td>{% if it.signed_pdf_path %}<a class="link-btn" href="{{ url_for('assinaturas.download_signed', path=it.signed_pdf_path) }}" target="_blank" rel="noopener">PDF</a>{% else %}-{% endif %}</td>
-          </tr>
-          {% else %}<tr><td colspan="8">Nenhuma assinatura PAC encontrada.</td></tr>{% endfor %}
+          {% else %}<tr><td colspan="6">Nenhum cadastro PAC encontrado.</td></tr>{% endfor %}
         </tbody>
       </table>
     </div>

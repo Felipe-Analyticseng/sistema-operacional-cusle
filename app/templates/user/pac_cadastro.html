@@ -12,7 +12,7 @@
       <label>CPF *<input name="cpf" required data-mask="cpf"></label>
       <label>E-mail *<input name="email" type="email" required></label>
       <label>Telefone / WhatsApp *<input name="telefone" required data-mask="phone"></label>
-      <label>Data de nascimento *<input name="data_nascimento" type="date" required></label>
+      <label>Data de nascimento *<input name="data_nascimento" type="date" max="{{ today }}" required></label>
       <label>Sexo *<select name="sexo" required>{% for item in sexo %}<option value="{{ item }}">{{ item or 'Selecione' }}</option>{% endfor %}</select></label>
       <label>Etnia *<select name="etnia" required>{% for item in etnias %}<option value="{{ item }}">{{ item or 'Selecione' }}</option>{% endfor %}</select></label>
       <label>Tem alguma deficiência? *<select name="possui_deficiencia" data-toggle-target="respDef"><option>Não</option><option>Sim</option></select></label>
@@ -63,7 +63,7 @@
     <div class="form-grid two">
       <label>Principais dificuldades ultimamente<textarea name="dificuldades" rows="3"></textarea></label>
       <label>Pode ensinar/realizar alguma aula/oficina?<textarea name="pode_oficina" rows="3"></textarea></label>
-      <label>Informe seu RG e CPF<input name="rg_cpf"></label>
+      <label>Informe seu RG, caso deseje complementar o cadastro<input name="rg_cpf"></label>
       <label>Sugestão de tema ou atividade<textarea name="sugestao_pac" rows="3"></textarea></label>
     </div>
 
@@ -77,6 +77,7 @@
   {% if assinatura_url %}
   <div class="modal-backdrop" id="signatureModal">
     <section class="modal-panel">
+      <button class="modal-close" type="button" data-close-modal="signatureModal" aria-label="Fechar">X</button>
       <h2>Termos gerados</h2>
       <p>O cadastro foi salvo e o link de assinatura dos termos PAC já está disponível.</p>
       <input id="signatureLink" value="{{ assinatura_url }}" readonly>

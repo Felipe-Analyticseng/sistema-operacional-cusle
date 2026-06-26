@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from config.settings import CESTA_BASICA_PAC_VALOR, PIX_CUSLE_CHAVE, PIX_CUSLE_NOME
@@ -390,7 +392,13 @@ def pac_cadastro():
             flash("Cadastro PAC realizado com sucesso.", "success")
         except Exception as exc:
             flash(str(exc), "danger")
-    return render_template("user/pac_cadastro.html", sexo=SEXO, etnias=ETNIAS, assinatura_url=assinatura_url)
+    return render_template(
+        "user/pac_cadastro.html",
+        sexo=SEXO,
+        etnias=ETNIAS,
+        assinatura_url=assinatura_url,
+        today=date.today().isoformat(),
+    )
 
 
 @bp.route("/pac/apadrinhamento", methods=["GET", "POST"])

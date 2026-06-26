@@ -1,22 +1,21 @@
 {% extends 'base.html' %}
 {% set body_class = 'admin-bg' %}
 {% block body %}
-{% include 'partials/admin_header.html' %}
+{% include 'partials/admin_pac_header.html' %}
 <main class="admin-main">
   <div class="admin-title">
-    <p class="eyebrow">Via-Nativo integrado</p>
-    <h1>Assinaturas</h1>
-    <span>Histórico de envelopes dos lotes FILHES e PAC.</span>
+    <p class="eyebrow">Termos PAC</p>
+    <h1>Assinaturas PAC</h1>
+    <span>Historico dos termos gerados e arquivos assinados do lote PAC.</span>
   </div>
 
   <section class="filter-panel">
     <form class="filter-form" method="get">
-      <label>Lote
-        <select name="batch">
+      <label>Status
+        <select name="status">
           <option value="">Todos</option>
-          {% for key, cfg in batches.items() %}
-          <option value="{{ key }}" {% if selected_batch == key %}selected{% endif %}>{{ cfg.label }}</option>
-          {% endfor %}
+          <option value="sent" {% if selected_status == 'sent' %}selected{% endif %}>Enviado</option>
+          <option value="signed" {% if selected_status == 'signed' %}selected{% endif %}>Assinado</option>
         </select>
       </label>
       <button class="btn small" type="submit">Filtrar</button>
@@ -24,20 +23,22 @@
   </section>
 
   <section class="table-panel">
-    <div class="table-head"><div><h2>Envelopes</h2><p>Uma linha por lote enviado ou assinado.</p></div></div>
+    <div class="table-head">
+      <div><h2>Envelopes PAC</h2><p>Acompanhe envio, assinatura e PDF final em uma unica lista.</p></div>
+    </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>ID</th><th>Lote</th><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Status</th><th>Criado em</th><th>Assinado em</th><th>Link</th><th>Arquivo</th></tr></thead>
+        <thead><tr><th>ID</th><th>Nome</th><th>Telefone</th><th>Status</th><th>Criado em</th><th>Assinado em</th><th>Link</th><th>Arquivo</th></tr></thead>
         <tbody>
-          {% for it in rows %}
+          {% for it in assinaturas %}
           <tr>
-            <td>#{{ it.id }}</td><td>{{ it.batch_label }}</td><td>{{ it.nome }}</td><td>{{ it.email }}</td><td>{{ it.telefone or '-' }}</td>
+            <td>#{{ it.id }}</td><td>{{ it.nome }}</td><td>{{ it.telefone or '-' }}</td>
             <td><span class="badge">{{ 'Assinado' if it.status == 'signed' else 'Enviado' }}</span></td>
             <td>{{ it.created_at|datetimebr }}</td><td>{{ it.signed_at|datetimebr }}</td>
             <td><a class="link-btn" href="{{ it.sign_url }}" target="_blank" rel="noopener">Abrir</a></td>
             <td>{% if it.signed_pdf_path or it.status == 'signed' %}<a class="link-btn" href="{{ url_for('assinaturas.download_signed', id=it.id) }}" target="_blank" rel="noopener">PDF</a>{% else %}-{% endif %}</td>
           </tr>
-          {% else %}<tr><td colspan="10">Nenhuma assinatura encontrada.</td></tr>{% endfor %}
+          {% else %}<tr><td colspan="8">Nenhuma assinatura PAC encontrada.</td></tr>{% endfor %}
         </tbody>
       </table>
     </div>

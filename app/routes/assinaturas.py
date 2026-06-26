@@ -3,13 +3,13 @@ from __future__ import annotations
 from io import BytesIO
 from pathlib import Path
 
-from flask import Blueprint, abort, redirect, render_template, request, send_file, url_for, flash
+from flask import Blueprint, abort, redirect, render_template, request, send_file, session, url_for, flash
 
 from services.assinatura_service import (
     assinar_envelope,
     buscar_assinatura,
+    buscar_pdf_assinado,
     merge_docs_to_pdf_bytes,
-    termos_allowed_upload_dirs,
 )
 
 bp = Blueprint("assinaturas", __name__)
@@ -55,9 +55,26 @@ def submit(token: str):
 
 @bp.get("/assinaturas/download")
 def download_signed():
-    path = request.args.get("path") or ""
-    file_path = Path(path).resolve()
-    allowed_dirs = [p.resolve() for p in termos_allowed_upload_dirs()]
-    if not any(root in file_path.parents for root in allowed_dirs) or not file_path.exists() or not file_path.is_file():
+    if not (session.get("admin_logado") or session.get("admin_pac_logado")):
+        abort(403)
+
+    envelope_id = request.args.get("id", type=int)
+    pdf = buscar_pdf_assinado(envelope_id=envelope_id, path=request.args.get("path"))
+    if not pdf:
         abort(404)
-    return send_file(file_path, as_attachment=False)
+
+    if pdf.get("bytes") is not None:
+        return send_file(
+            BytesIO(pdf["bytes"]),
+            as_attachment=False,
+            download_name=pdf["filename"],
+            mimetype="application/pdf",
+        )
+
+    file_path = Path(pdf["path"])
+    return send_file(
+        file_path,
+        as_attachment=False,
+        download_name=pdf["filename"],
+        mimetype="application/pdf",
+    )

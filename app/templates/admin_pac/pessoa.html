@@ -6,7 +6,7 @@
   <div class="admin-title">
     <p class="eyebrow">Registro PAC</p>
     <h1>{{ pessoa.nome }}</h1>
-    <span>Cadastro completo da pessoa no Programa Acolhe CUSLE.</span>
+    <span>Edite e complemente os dados migrados para o cadastro PAC.</span>
   </div>
 
   <section class="profile-layout">
@@ -24,26 +24,82 @@
 
     <article class="table-panel profile-data-panel">
       <div class="table-head">
-        <div><h2>Dados cadastrais</h2><p>Campos sincronizados do formulário PAC interno.</p></div>
+        <div><h2>Dados cadastrais</h2><p>Complete os campos vazios ou corrija dados migrados do legado.</p></div>
         <a class="btn secondary small" href="{{ url_for('admin_pac.dashboard') }}">Voltar</a>
       </div>
-      <div class="detail-grid">
-        {% for label, key in [
-          ('Nome completo', 'nome'), ('Nome social', 'nome_social'), ('CPF/RG', 'cpf'), ('E-mail', 'email'),
-          ('Telefone', 'telefone'), ('Data de nascimento', 'data_nascimento'), ('Idade', 'idade'), ('Sexo', 'sexo'),
-          ('Etnia', 'etnia'), ('Responsável', 'responsavel_nome'), ('CPF responsável', 'responsavel_cpf'),
-          ('Endereço completo', 'endereco_completo'), ('Estado civil', 'estado_civil'), ('Com quem mora', 'com_quem_mora'),
-          ('Situação de trabalho', 'situacao_trabalho'), ('Renda mensal', 'renda_mensal'), ('Renda familiar', 'renda_familiar'),
-          ('Cadastro Único', 'cadastro_unico'), ('Benefícios', 'beneficios'), ('Problema de saúde', 'problema_saude'),
-          ('Medicação contínua', 'medicacao_continua'), ('Acompanhamento psicológico/psiquiátrico', 'acompanhamento_psicologico'),
-          ('Alergia', 'alergia'), ('Possui deficiência', 'possui_deficiencia'), ('Descrição deficiência', 'descricao_deficiencia'),
-          ('Filho com saúde/alergia', 'filho_saude_alergia'), ('Medicação do filho', 'filho_medicacao'),
-          ('Refeições por dia', 'refeicoes_dia'), ('Moradia', 'moradia'), ('Água, luz e saneamento', 'saneamento_basico'),
-          ('Apoio de interesse', 'apoio_interesse'), ('Dificuldades', 'dificuldades'), ('Pode oferecer oficina', 'pode_oficina'),
-          ('RG e CPF informado', 'rg_cpf'), ('Sugestão PAC', 'sugestao_pac')
-        ] %}
-          <div class="detail-item"><span>{{ label }}</span><strong>{{ pessoa.get(key) if pessoa.get(key) not in [None, ''] else '-' }}</strong></div>
-        {% endfor %}
+
+      <form method="post" action="{{ url_for('admin_pac.pessoa_update', cadastro_id=pessoa.id) }}" class="pac-edit-form">
+        <div class="form-grid two">
+          <label>Nome completo *<input name="nome" value="{{ pessoa.nome or '' }}" required></label>
+          <label>Nome social<input name="nome_social" value="{{ pessoa.nome_social or '' }}"></label>
+          <label>CPF *<input name="cpf" data-mask="cpf" value="{{ pessoa.cpf or '' }}" required></label>
+          <label>E-mail<input name="email" type="email" value="{{ pessoa.email or '' }}"></label>
+          <label>Telefone<input name="telefone" data-mask="phone" value="{{ pessoa.telefone or '' }}"></label>
+          <label>Data de nascimento<input name="data_nascimento" type="date" value="{{ pessoa.data_nascimento or '' }}"></label>
+          <label>Sexo
+            <select name="sexo">
+              {% for item in ['', 'Feminino', 'Masculino', 'Outro', 'Prefiro nao informar'] %}
+              <option value="{{ item }}" {% if pessoa.sexo == item %}selected{% endif %}>{{ item or 'Selecione' }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Etnia
+            <select name="etnia">
+              {% for item in ['', 'Preto', 'Branco', 'Pardo', 'Amarelo'] %}
+              <option value="{{ item }}" {% if pessoa.etnia == item %}selected{% endif %}>{{ item or 'Selecione' }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Responsavel<input name="responsavel_nome" value="{{ pessoa.responsavel_nome or '' }}"></label>
+          <label>CPF responsavel<input name="responsavel_cpf" data-mask="cpf" value="{{ pessoa.responsavel_cpf or '' }}"></label>
+          <label>Estado civil<input name="estado_civil" value="{{ pessoa.estado_civil or '' }}"></label>
+          <label>Cadastro Unico<input name="cadastro_unico" value="{{ pessoa.cadastro_unico or '' }}"></label>
+          <label>Situacao de trabalho<input name="situacao_trabalho" value="{{ pessoa.situacao_trabalho or '' }}"></label>
+          <label>Renda mensal<input name="renda_mensal" value="{{ pessoa.renda_mensal or '' }}"></label>
+          <label>Renda familiar<input name="renda_familiar" value="{{ pessoa.renda_familiar or '' }}"></label>
+          <label>Refeicoes por dia<input name="refeicoes_dia" value="{{ pessoa.refeicoes_dia or '' }}"></label>
+          <label>Moradia<input name="moradia" value="{{ pessoa.moradia or '' }}"></label>
+          <label>Agua, luz e saneamento<input name="saneamento_basico" value="{{ pessoa.saneamento_basico or '' }}"></label>
+          <label>Acompanhamento psicologico/psiquiatrico<input name="acompanhamento_psicologico" value="{{ pessoa.acompanhamento_psicologico or '' }}"></label>
+          <label>Possui deficiencia?
+            <select name="possui_deficiencia">
+              <option value="0" {% if not pessoa.possui_deficiencia %}selected{% endif %}>Nao</option>
+              <option value="1" {% if pessoa.possui_deficiencia %}selected{% endif %}>Sim</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="form-grid two pac-edit-textareas">
+          <label>Endereco completo<textarea name="endereco_completo" rows="3">{{ pessoa.endereco_completo or '' }}</textarea></label>
+          <label>Com quem mora<textarea name="com_quem_mora" rows="3">{{ pessoa.com_quem_mora or '' }}</textarea></label>
+          <label>Beneficios<textarea name="beneficios" rows="3">{{ pessoa.beneficios or '' }}</textarea></label>
+          <label>Problema de saude<textarea name="problema_saude" rows="3">{{ pessoa.problema_saude or '' }}</textarea></label>
+          <label>Medicacao continua<textarea name="medicacao_continua" rows="3">{{ pessoa.medicacao_continua or '' }}</textarea></label>
+          <label>Alergia<textarea name="alergia" rows="3">{{ pessoa.alergia or '' }}</textarea></label>
+          <label>Descricao deficiencia<textarea name="descricao_deficiencia" rows="3">{{ pessoa.descricao_deficiencia or '' }}</textarea></label>
+          <label>Filho com saude/alergia<textarea name="filho_saude_alergia" rows="3">{{ pessoa.filho_saude_alergia or '' }}</textarea></label>
+          <label>Medicacao do filho<textarea name="filho_medicacao" rows="3">{{ pessoa.filho_medicacao or '' }}</textarea></label>
+          <label>Apoio de interesse<textarea name="apoio_interesse" rows="3">{{ pessoa.apoio_interesse or '' }}</textarea></label>
+          <label>Dificuldades<textarea name="dificuldades" rows="3">{{ pessoa.dificuldades or '' }}</textarea></label>
+          <label>Pode oferecer oficina<textarea name="pode_oficina" rows="3">{{ pessoa.pode_oficina or '' }}</textarea></label>
+          <label>RG complementar<textarea name="rg_cpf" rows="2">{{ pessoa.rg_cpf or '' }}</textarea></label>
+          <label>Sugestao PAC<textarea name="sugestao_pac" rows="3">{{ pessoa.sugestao_pac or '' }}</textarea></label>
+        </div>
+
+        <div class="actions">
+          <a class="btn secondary" href="{{ url_for('admin_pac.dashboard') }}">Cancelar</a>
+          <button class="btn" type="submit">Salvar alteracoes</button>
+        </div>
+      </form>
+
+      <div class="danger-zone">
+        <div>
+          <h2>Excluir pessoa</h2>
+          <p>Remove este cadastro do PAC e limpa os vinculos administrativos associados.</p>
+        </div>
+        <form method="post" action="{{ url_for('admin_pac.pessoa_delete', cadastro_id=pessoa.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir esta pessoa do PAC? Esta acao nao pode ser desfeita.');">
+          <button class="btn danger" type="submit">Excluir pessoa</button>
+        </form>
       </div>
     </article>
   </section>

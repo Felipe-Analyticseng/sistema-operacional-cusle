@@ -8,7 +8,8 @@
   </div>
   <nav>
     <a href="{{ url_for('admin_pac.dashboard') }}">Dashboard PAC</a>
-    <a href="#assinaturas">Assinaturas PAC</a>
+    <a href="{{ url_for('admin_pac.assinaturas') }}">Assinaturas PAC</a>
+    <a href="{{ url_for('admin_pac.cursos') }}">Cursos PAC</a>
   </nav>
   <a class="logout" href="{{ url_for('user.home') }}">Portal usuário</a>
   <a class="logout" href="{{ url_for('admin_pac.logout') }}">Sair</a>

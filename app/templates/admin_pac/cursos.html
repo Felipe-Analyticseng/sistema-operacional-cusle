@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% set body_class = 'admin-bg' %}
+{% block body %}
+{% include 'partials/admin_pac_header.html' %}
+<main class="admin-main">
+  <div class="admin-title">
+    <p class="eyebrow">Cursos e capacitacoes</p>
+    <h1>Cursos PAC</h1>
+    <span>Consulta dos cursos do catalogo PAC com inscritos filtrados pelo perfil PAC.</span>
+  </div>
+
+  <section class="course-admin-grid">
+    {% for curso in cursos %}
+    <details class="course-admin-card">
+      <summary>
+        <span>
+          <strong>{{ curso.nome }}</strong>
+          <small>{% if curso.data %}{{ curso.data }}{% else %}Sem data fixa{% endif %}</small>
+        </span>
+        <span class="course-admin-count">{{ curso.total }} inscrito{{ '' if curso.total == 1 else 's' }}</span>
+      </summary>
+      <div class="course-admin-meta">
+        <span>{% if curso.limite %}Limite: {{ curso.limite }}{% else %}Sem limite definido{% endif %}</span>
+        <span>{% if curso.vagas_restantes is not none %}Vagas restantes: {{ curso.vagas_restantes }}{% else %}Vagas abertas{% endif %}</span>
+        <a class="btn small" href="{{ url_for('admin_pac.cursos_export', curso_key=curso.curso_key) }}">Extrair Excel</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Inscrito em</th></tr></thead>
+          <tbody>
+            {% for pessoa in curso.inscritos %}
+            <tr>
+              <td>{{ pessoa.nome }}</td>
+              <td>{{ pessoa.telefone or '-' }}</td>
+              <td>{{ pessoa.email }}</td>
+              <td>{{ pessoa.created_at|datetimebr }}</td>
+            </tr>
+            {% else %}<tr><td colspan="4">Nenhum integrante PAC inscrito neste curso.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+    {% endfor %}
+  </section>
+</main>
+{% endblock %}
